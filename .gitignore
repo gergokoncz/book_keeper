@@ -172,5 +172,3 @@ cython_debug/
 
 # Ignore Terraform plugin files
 .terraform/
-
-.terraform.lock.hcl
