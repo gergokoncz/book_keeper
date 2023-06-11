@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "book-keeper"
+version = "0.1.0"
+description = "Keep track of the book you read"
+authors = ["gergokoncz <gergokoncz06@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "book_keeper"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+streamlit = "^1.23.1"
+streamlit-lottie = "^0.0.5"
+requests = "^2.31.0"
+awswrangler = "^3.1.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
