@@ -34,7 +34,7 @@ EOF
 ## s3 policy
 
 resource "aws_iam_policy" "book_keeper_store_policy" {
-    name        = "book_keeper_store_policy"
+    name        = "book-keeper-store-policy"
     description = "Full access to book-keeper-store bucket"
 
     policy = <<EOF
@@ -42,14 +42,41 @@ resource "aws_iam_policy" "book_keeper_store_policy" {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "AllowBucketAccess",
+      "Sid": "AllowS3Access",
       "Effect": "Allow",
       "Action": [
         "s3:GetObject",
         "s3:PutObject",
-        "s3:DeleteObject"
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:ListObjectsV2"
       ],
-      "Resource": "arn:aws:s3:::book-keeper-store/*"
+      "Resource": [
+        "arn:aws:s3:::book-keeper-store-bucket",
+        "arn:aws:s3:::book-keeper-store-bucket/*"
+      ]
+    },
+        {
+      "Sid": "AllowS3BucketCreation",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::*"
+      ]
+    },
+    {
+      "Sid": "AllowS3AdminAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:*"
+      ],
+      "Resource": [
+        "arn:aws:s3:::*",
+        "arn:aws:s3:::*/*"
+      ]
     }
   ]
 }
@@ -89,6 +116,20 @@ resource "aws_iam_policy" "athena_query_execution_policy" {
         "athena:GetQueryExecutionInput",
         "athena:GetWorkGroup",
         "athena:ListQueryExecutions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowGlueTableManagement",
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetTable",
+        "glue:CreateTable",
+        "glue:DeleteTable",
+        "glue:BatchCreatePartition",
+        "glue:BatchDeletePartition",
+        "glue:UpdateTable",
+        "glue:GetPartitions"
       ],
       "Resource": "*"
     }

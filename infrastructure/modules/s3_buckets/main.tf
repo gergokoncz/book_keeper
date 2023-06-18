@@ -11,7 +11,7 @@ resource "aws_s3_bucket" "athena_output_bucket" {
   bucket = var.athena_output_bucket_name
 
   tags = {
-    Name    = "athena-output-bucket"
+    Name    = "athena-output-bucket-1zxf8478"
     project = "book-keeper"
   }
 }
