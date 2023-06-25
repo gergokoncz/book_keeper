@@ -5,10 +5,10 @@ CREATE EXTERNAL TABLE IF NOT EXISTS `book_keeper`.`{}_books` (
   `subtitle` string,
   `author` string,
   `location` string,
-  `pageN` int,
-  `pageCurrent` int,
-  `currentDate` timestamp,
-  `finishDate` timestamp,
+  `page_n` int,
+  `page_current` int,
+  `current_date` timestamp,
+  `finish_date` timestamp,
   `tag1` string,
   `tag2` string,
   `tag3` string,
@@ -28,9 +28,9 @@ UPDATE_USER_TABLE_QUERY = """
 MSCK REPAIR TABLE `book_keeper.{}`;
 """
 
-CREATE_LATEST_UPDATE_BER_BOOK_QUERY = """
+CREATE_LATEST_UPDATE_PER_BOOK_QUERY = """
 CREATE OR REPLACE VIEW book_keeper.{}_latest_update_per_book AS
-SELECT slug, MAX(currentDate) as latestEditDate
+SELECT slug, MAX(current_date) as latestEditDate
 FROM book_keeper.{}_books
 GROUP BY slug;
 """

@@ -1,23 +1,39 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import streamlit as st
 import pandas as pd
+from streamlit_lottie import st_lottie
 from os import environ
 
-from utils import BookKeeper, load_lottie_url
+from utils import BookKeeperIO, load_lottie_url
 
 st.set_page_config(layout="wide")
-bucket = environ.get("BOOKSTORAGE_BUCKET")
-bk = BookKeeper("gergokoncz", bucket=bucket)
 
-st.session_state.edited_books_df = pd.DataFrame()
+if "bk" not in st.session_state:
+    bucket = environ.get("BOOKSTORAGE_BUCKET")
+    st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
+
+# get an update on the tables
+if "books_df" not in st.session_state:
+    (
+        st.session_state.books_df,
+        st.session_state.today_books_df,
+        st.session_state.latest_book_state_df,
+    ) = st.session_state.bk.update_tables()
+
+lottie_add = load_lottie_url("https://assets6.lottiefiles.com/packages/lf20_hMl7FE.json")
+st_lottie(lottie_add, speed=1, height=100, key="initial")
 
 st.markdown(
     """
 ## Add a new book
-Specify the book details below.
+Specify the book details below. Most details can be left empty and edited later on the update page.
+The exceptions are the title and the author.
 """
 )
 
-finished = st.checkbox("Finished - if not ignore Finish date")
+finished = st.checkbox("Finished")
 finish_date = None
 
 col1, col2, col3 = st.columns(3)
@@ -26,10 +42,12 @@ with col1:
     book_title = st.text_input("Title")
     book_subtitle = st.text_input("Subtitle")
     book_author = st.text_input("Author")
+    book_publisher = st.text_input("Publisher")
     if finished:
         finish_date = st.date_input("Finish date", value=None)
 
 with col2:
+    published_year = st.number_input("Published year", min_value=0, max_value=2023)
     book_location = st.text_input("Location - physical or virtual")
     book_pageN = st.number_input(
         "Number of pages", min_value=0, max_value=100_000, value=100
@@ -53,25 +71,35 @@ if st.button("Add book"):
         "subtitle": book_subtitle,
         "author": book_author,
         "location": book_location,
-        "pageN": book_pageN,
-        "pageCurrent": book_pageCurrent,
-        "currentDate": pd.Timestamp.today(),
-        "finishDate": finish_date,
+        "publisher": book_publisher,
+        "published_year": published_year,
+        "page_n": book_pageN,
+        "page_current": book_pageCurrent,
+        "current_date": pd.Timestamp.today(),
+        "finish_date": finish_date,
         "tag1": book_tag1,
         "tag2": book_tag2,
         "tag3": book_tag3,
         "language": book_language,
     }
-    st.session_state.edited_books_df = bk.add_book(book, finished, st.session_state.get("edited_books_df"))
-    st.success("Books added!")
+    success, st.session_state.today_books_df = st.session_state.bk.add_book(
+        book, finished, st.session_state.today_books_df
+    )
 
-if not st.session_state.get("edited_books_df").empty:
-    st.write(st.session_state.edited_books_df)
-else:
-    st.write("No edited books today.")
+    if success:
+        st.success("Books added!")
+    else:
+        st.warning("Book already exists")
+
+st.markdown("### Edited books")
+st.write(st.session_state.today_books_df)
 
 if st.button("Save updates"):
-    saved = bk.save_books(st.session_state.edited_books_df)
+    saved = st.session_state.bk.save_books(st.session_state.today_books_df)
     if saved:
-        st.session_state.edited_books_df = pd.DataFrame()
         st.success("Books saved!")
+        (
+            st.session_state.books_df,
+            st.session_state.today_books_df,
+            st.session_state.latest_book_state_df,
+        ) = st.session_state.bk.update_tables()
