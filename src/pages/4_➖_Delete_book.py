@@ -34,7 +34,9 @@ selected_slug = st.selectbox(
 
 if st.button("Delete book"):
     success, st.session_state.today_books_df = st.session_state.bk.delete_book(
-        selected_slug, st.session_state.today_books_df
+        selected_slug,
+        st.session_state.today_books_df,
+        st.session_state.latest_book_state_df,
     )
     if success:
         st.success("Books updated!")

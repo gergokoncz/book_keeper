@@ -22,7 +22,9 @@ if "books_df" not in st.session_state:
         st.session_state.latest_book_state_df,
     ) = st.session_state.bk.update_tables()
 
-lottie_add = load_lottie_url("https://assets6.lottiefiles.com/packages/lf20_hMl7FE.json")
+lottie_add = load_lottie_url(
+    "https://assets6.lottiefiles.com/packages/lf20_hMl7FE.json"
+)
 st_lottie(lottie_add, speed=1, height=100, key="initial")
 
 st.markdown(

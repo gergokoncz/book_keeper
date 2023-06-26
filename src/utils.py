@@ -13,7 +13,6 @@ from os import environ
 athena_client = boto3.client("athena")
 athena_result_bucket = environ.get("ATHENA_RESULT_BUCKET")
 
-
 class BookKeeperIO:
     """
     Class to handle the IO operations of the BookKeeper app.
@@ -68,14 +67,20 @@ class BookKeeperIO:
         ).lower()
 
     def _append_book_to_df(
-        self, book: dict, finished: bool, df: pd.DataFrame
+        self,
+        book: dict,
+        finished: bool,
+        df: pd.DataFrame,
+        deleted: bool = False,
     ) -> pd.DataFrame:
         """
         Append a new book to the dataframe.
         """
-        book["finish_date"] = pd.to_datetime(book["finish_date"])
+        if type(book["finish_date"]) != type(pd.to_datetime("today")):
+            book["finish_date"] = pd.to_datetime(book["finish_date"])
+
         book["current_date"] = pd.to_datetime("today").normalize()
-        book["deleted"] = False
+        book["deleted"] = deleted
         book["started"] = book["page_current"] > 0
 
         if not finished:
@@ -116,18 +121,30 @@ class BookKeeperIO:
             df = df.drop(df[df["slug"] == book["slug"]].index)
 
         return True, self._append_book_to_df(book=book, finished=finished, df=df)
-    
-    def delete_book(self, slug: str, df: pd.DataFrame) -> Tuple[bool, pd.DataFrame]:
+
+    def delete_book(
+        self, slug: str, today_df: pd.DataFrame, latest_df: pd.DataFrame
+    ) -> Tuple[bool, pd.DataFrame]:
         """
         Delete a book from the user's book list.
         """
-        if slug in set(df["slug"].unique().tolist()):
-            df.loc[df["slug"] == slug, "deleted"] = True
-            return True, df
+        if slug in set(today_df["slug"].unique().tolist()):
+            today_df.loc[today_df["slug"] == slug, "deleted"] = True
+            return True, today_df
         else:
-            return False, df
+            book_to_be_deleted = latest_df.loc[latest_df["slug"] == slug].to_dict("records")[0]
+            today_df = self._append_book_to_df(
+                book=book_to_be_deleted, finished=False, df=today_df, deleted=True
+            )
+            return True, today_df
 
-    def get_books(self) -> pd.DataFrame:
+    def get_deleted_books(self, df: pd.DataFrame) -> set:
+        """
+        Get the deleted books.
+        """
+        return set(df.query("deleted==True")["slug"].unique().tolist())
+
+    def get_all_books(self) -> pd.DataFrame:
         if self.search_user_table():
             books_df = wr.athena.read_sql_table(
                 table=f"{self.user_id}_books",
@@ -139,6 +156,14 @@ class BookKeeperIO:
             return books_df
         else:
             return EXAMPLE_DATA
+
+    def get_books(self) -> pd.DataFrame:
+        """
+        Get the user's books.
+        """
+        all_books_df = self.get_all_books()
+        deleted_books = self.get_deleted_books(all_books_df)
+        return all_books_df.query("slug not in @deleted_books")
 
     def save_books(self, df: pd.DataFrame) -> bool:
         """

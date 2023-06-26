@@ -62,7 +62,7 @@ with title_col2:
 
 col1, col2, col3 = st.columns(3)
 
-with col1:  
+with col1:
     book_subtitle = st.text_input("Subtitle", value=selected_book.get("subtitle"))
     book_location = st.text_input(
         "Location - physical or virtual", value=selected_book.get("location")
