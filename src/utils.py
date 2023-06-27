@@ -10,7 +10,7 @@ from example_data import EXAMPLE_DATA
 from os import environ
 
 # init global variables
-athena_client = boto3.client("athena")
+athena_client = boto3.client("athena", region_name="eu-north-1")
 athena_result_bucket = environ.get("ATHENA_RESULT_BUCKET")
 
 class BookKeeperIO:
