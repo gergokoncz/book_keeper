@@ -48,7 +48,7 @@ st.markdown("### Update book details")
 finish_date = selected_book.get("finish_date")
 finished = st.checkbox(
     "Finished",
-    value=finish_date != pd.Timestamp("1990-01-01") and finish_date is not None,
+    value=not pd.isnull(finish_date),
 )
 
 title_col1, title_col2 = st.columns(2)
