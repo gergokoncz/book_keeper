@@ -69,7 +69,9 @@ with col1:
     )
     book_publisher = st.text_input("Publisher", value=selected_book.get("publisher"))
     if finished:
-        finish_date = st.date_input("Finish date", value=finish_date)
+        finish_date = st.date_input(
+            "Finish date", value=finish_date if not pd.isnull(finish_date) else None
+        )
 
 with col2:
     published_year = st.number_input(

@@ -13,6 +13,7 @@ from os import environ
 athena_client = boto3.client("athena", region_name="eu-north-1")
 athena_result_bucket = environ.get("ATHENA_RESULT_BUCKET")
 
+
 class BookKeeperIO:
     """
     Class to handle the IO operations of the BookKeeper app.
@@ -132,7 +133,9 @@ class BookKeeperIO:
             today_df.loc[today_df["slug"] == slug, "deleted"] = True
             return True, today_df
         else:
-            book_to_be_deleted = latest_df.loc[latest_df["slug"] == slug].to_dict("records")[0]
+            book_to_be_deleted = latest_df.loc[latest_df["slug"] == slug].to_dict(
+                "records"
+            )[0]
             today_df = self._append_book_to_df(
                 book=book_to_be_deleted, finished=False, df=today_df, deleted=True
             )
