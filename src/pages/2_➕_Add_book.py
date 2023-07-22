@@ -60,6 +60,7 @@ with col2:
 
 with col3:
     book_tag1 = st.text_input("Tag1")
+    # book_tag1 = st.multiselect("Tag1", st.session_state.books_df["tag1"].unique())
     book_tag2 = st.text_input("Tag2")
     book_tag3 = st.text_input("Tag3")
     book_language = st.selectbox(

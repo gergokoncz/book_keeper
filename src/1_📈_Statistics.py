@@ -5,8 +5,9 @@ import streamlit as st
 import pandas as pd
 from streamlit_lottie import st_lottie
 from os import environ
+import altair as alt
 
-from utils import BookKeeperIO, load_lottie_url
+from utils import BookKeeperIO, load_lottie_url, BookKeeperDataOps
 
 st.set_page_config(layout="wide")
 
@@ -36,8 +37,10 @@ st.markdown("## Your stats")
 
 st.write(st.session_state.latest_book_state_df)
 
-st.write(st.session_state.books_df)
+bkdata = BookKeeperDataOps(st.session_state.books_df)
+latest_books_df = bkdata.add_book_state(st.session_state.latest_book_state_df)
+st.write(latest_books_df)
 
-if st.button("Save"):
-    st.session_state.bk.save_books(st.session_state.books_df)
-    st.success("Books saved!")
+fig = alt.Chart(latest_books_df).mark_bar().encode(x = "state", y = "count()")
+st.altair_chart(fig, use_container_width=True)
+

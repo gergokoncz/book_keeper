@@ -3,6 +3,7 @@
 
 import streamlit as st
 import pandas as pd
+from streamlit_lottie import st_lottie
 from os import environ
 
 from utils import BookKeeperIO, load_lottie_url
@@ -20,6 +21,11 @@ if "books_df" not in st.session_state:
         st.session_state.today_books_df,
         st.session_state.latest_book_state_df,
     ) = st.session_state.bk.update_tables()
+
+lottie_add = load_lottie_url(
+    "https://assets7.lottiefiles.com/packages/lf20_nux6g0kx.json"
+)
+st_lottie(lottie_add, speed=1, height=100, key="initial")
 
 st.markdown(
     """

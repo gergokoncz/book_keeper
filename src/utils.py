@@ -3,15 +3,42 @@ import awswrangler as wr
 import requests
 import boto3
 from typing import Dict, Any, Tuple
-import time
 from athena_queries import CREATE_LATEST_UPDATE_PER_BOOK_QUERY
 from example_data import EXAMPLE_DATA
-
+from enum import Enum
 from os import environ
+
+class BookState(Enum):
+    NOT_STARTED = "not started"
+    IN_PROGRESS = "in progress"
+    FINISHED = "finished"
 
 # init global variables
 athena_client = boto3.client("athena", region_name="eu-north-1")
 athena_result_bucket = environ.get("ATHENA_RESULT_BUCKET")
+
+class BookKeeperDataOps:
+    """
+    Class to handle the data related operations of the BookKeeper app.
+    """
+    def __init__(self, books_df: pd.DataFrame) -> None:
+        self.books_df = books_df
+
+    def fillup_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fill up the dataframe with the missing columns.
+        """
+        return df
+
+    def add_book_state(self, latest_books_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add the state of the book to the dataframe.
+        """
+        latest_books_df["state"] = BookState.NOT_STARTED.value
+        latest_books_df.loc[latest_books_df["page_current"] > 0, "state"] = BookState.IN_PROGRESS.value
+        latest_books_df.loc[~pd.isnull(latest_books_df["finish_date"]),"state"] = BookState.FINISHED.value
+        
+        return latest_books_df
 
 
 class BookKeeperIO:
