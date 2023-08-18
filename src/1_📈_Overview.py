@@ -1,13 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+This is the entry point for BookKeeper app.
 
-import streamlit as st
-import pandas as pd
-from streamlit_lottie import st_lottie
+Showing some basic statistics of the books that you have logged.
+"""
+
 from os import environ
-import altair as alt
 
-from utils import BookKeeperIO, load_lottie_url, BookKeeperDataOps
+import altair as alt
+import streamlit as st
+from streamlit_lottie import st_lottie
+
+from utils import BookKeeperDataOps, BookKeeperIO, load_lottie_url
 
 st.set_page_config(layout="wide")
 
@@ -41,6 +46,5 @@ bkdata = BookKeeperDataOps(st.session_state.books_df)
 latest_books_df = bkdata.add_book_state(st.session_state.latest_book_state_df)
 st.write(latest_books_df)
 
-fig = alt.Chart(latest_books_df).mark_bar().encode(x = "state", y = "count()")
+fig = alt.Chart(latest_books_df).mark_bar().encode(x="state", y="count()")
 st.altair_chart(fig, use_container_width=True)
-

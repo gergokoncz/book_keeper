@@ -1,55 +1,97 @@
-import pandas as pd
-import awswrangler as wr
-import requests
-import boto3
-from typing import Dict, Any, Tuple
-from athena_queries import CREATE_LATEST_UPDATE_PER_BOOK_QUERY
-from example_data import EXAMPLE_DATA
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+The utility class of the app.
+
+With classes and functions for IO and data manipulation.
+"""
+import time
 from enum import Enum
 from os import environ
+from typing import Any, Optional, Tuple
+
+import awswrangler as wr
+import boto3
+import pandas as pd
+import requests
+
+from athena_queries import CREATE_LATEST_UPDATE_PER_BOOK_QUERY
+from example_data import EXAMPLE_DATA
+
 
 class BookState(Enum):
+    """Possible values for the state of the books."""
+
     NOT_STARTED = "not started"
     IN_PROGRESS = "in progress"
     FINISHED = "finished"
+
 
 # init global variables
 athena_client = boto3.client("athena", region_name="eu-north-1")
 athena_result_bucket = environ.get("ATHENA_RESULT_BUCKET")
 
+
 class BookKeeperDataOps:
-    """
-    Class to handle the data related operations of the BookKeeper app.
-    """
-    def __init__(self, books_df: pd.DataFrame) -> None:
+    """Class to handle the data related operations of the BookKeeper app."""
+
+    def __init__(self, books_df: pd.DataFrame):
+        """
+        Class constructor.
+
+        :param books_df: the dataframe of the books
+        :type books_df: pd.DataFrame
+        """
         self.books_df = books_df
 
     def fillup_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         """
         Fill up the dataframe with the missing columns.
+
+        :param df: the dataframe to fill up
+        :type df: pd.DataFrame
+
+        :return: the dataframe filled up
+        :rtype: pd.DataFrame
         """
         return df
 
     def add_book_state(self, latest_books_df: pd.DataFrame) -> pd.DataFrame:
         """
         Add the state of the book to the dataframe.
+
+        :param latest_books_df: the dataframe of the latest books
+        :type latest_books_df: pd.DataFrame
+
+        :return: the dataframe updated with the state of the books
+        :rtype: pd.DataFrame
         """
         latest_books_df["state"] = BookState.NOT_STARTED.value
-        latest_books_df.loc[latest_books_df["page_current"] > 0, "state"] = BookState.IN_PROGRESS.value
-        latest_books_df.loc[~pd.isnull(latest_books_df["finish_date"]),"state"] = BookState.FINISHED.value
-        
+        latest_books_df.loc[
+            latest_books_df["page_current"] > 0, "state"
+        ] = BookState.IN_PROGRESS.value
+        latest_books_df.loc[
+            ~pd.isnull(latest_books_df["finish_date"]), "state"
+        ] = BookState.FINISHED.value
+
         return latest_books_df
 
 
 class BookKeeperIO:
-    """
-    Class to handle the IO operations of the BookKeeper app.
-    """
+    """Class to handle the IO operations of the BookKeeper app."""
 
     def __init__(self, user_id: str, bucket: str):
+        """
+        Class constructor.
+
+        :param user_id: the id of the user
+        :type user_id: str
+        :param bucket: the name of the bucket
+        :type bucket: str
+        """
         self.user_id = user_id
         self.bucket = bucket
-        self.existing_book_slugs = set()
+        self.existing_book_slugs: set[str] = set()
         self.books_table_schema = {
             "title": "string",
             "subtitle": "string",
@@ -73,8 +115,16 @@ class BookKeeperIO:
     @staticmethod
     def _poll_for_athena_query(query_execution_id: str) -> str:
         """
+        Poll for the status of the Athena query.
+
         Response can be
         QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED
+
+        :param query_execution_id: the id of the query execution
+        :type query_execution_id: str
+
+        :return: the status of the query
+        :rtype: str
         """
         while True:
             time.sleep(1)
@@ -86,7 +136,16 @@ class BookKeeperIO:
                 return status
 
     @staticmethod
-    def create_slug(book: Dict[str, Any]) -> str:
+    def create_slug(book: dict[str, Any]) -> str:
+        """
+        Create a slug for the book.
+
+        :param book: the book to create the slug for
+        :type book: dict[str, Any]
+
+        :return: the slug of the book
+        :rtype: str
+        """
         return "-".join(
             [
                 book["author"].replace(".", "").replace(" ", "-"),
@@ -96,15 +155,27 @@ class BookKeeperIO:
 
     def _append_book_to_df(
         self,
-        book: dict,
+        book: dict[str, Any],
         finished: bool,
         df: pd.DataFrame,
         deleted: bool = False,
     ) -> pd.DataFrame:
         """
         Append a new book to the dataframe.
+
+        :param book: the book to append
+        :type book: dict[str, Any]
+        :param finished: whether the book is finished or not
+        :type finished: bool
+        :param df: the dataframe to append the book to
+        :type df: pd.DataFrame
+        :param deleted: whether the book is deleted or not, defaults to False
+        :type deleted: bool, optional
+
+        :return: the dataframe with the book appended
+        :rtype: pd.DataFrame
         """
-        if type(book["finish_date"]) != type(pd.to_datetime("today")):
+        if type(book["finish_date"]) != type(pd.to_datetime("today")):  # noqa: E721
             book["finish_date"] = pd.to_datetime(book["finish_date"])
 
         book["current_date"] = pd.to_datetime("today").normalize()
@@ -121,10 +192,20 @@ class BookKeeperIO:
         return new_df
 
     def add_book(
-        self, book: dict, finished: bool, df: pd.DataFrame
+        self, book: dict[str, Any], finished: bool, df: pd.DataFrame
     ) -> Tuple[bool, pd.DataFrame]:
         """
         Add a new book to the user's book list.
+
+        :param book: the book to add
+        :type book: dict[str, Any]
+        :param finished: whether the book is finished or not
+        :type finished: bool
+        :param df: the dataframe to add the book to
+        :type df: pd.DataFrame
+
+        :return: whether the book was added or not, the dataframe with the book added
+        :rtype: Tuple[bool, pd.DataFrame]
         """
         book["slug"] = self.create_slug(book)
 
@@ -136,9 +217,21 @@ class BookKeeperIO:
 
         return True, self._append_book_to_df(book=book, finished=finished, df=df)
 
-    def update_book(self, book: dict, finished: bool, df: pd.DataFrame) -> pd.DataFrame:
+    def update_book(
+        self, book: dict[str, Any], finished: bool, df: pd.DataFrame
+    ) -> pd.DataFrame:
         """
         Update an existing book.
+
+        :param book: the book to update
+        :type book: dict[str, Any]
+        :param finished: whether the book is finished or not
+        :type finished: bool
+        :param df: the dataframe to update the book in
+        :type df: pd.DataFrame
+
+        :return: the dataframe with the book updated
+        :rtype: pd.DataFrame
         """
         ## some logic needed to handle the update
         todays_books_slugs = (
@@ -155,6 +248,16 @@ class BookKeeperIO:
     ) -> Tuple[bool, pd.DataFrame]:
         """
         Delete a book from the user's book list.
+
+        :param slug: the slug of the book to delete
+        :type slug: str
+        :param today_df: the dataframe to delete the book from
+        :type today_df: pd.DataFrame
+        :param latest_df: the latest dataframe of the user's books
+        :type latest_df: pd.DataFrame
+
+        :return: whether the book was deleted or not, the dataframe with the book deleted
+        :rtype: Tuple[bool, pd.DataFrame]
         """
         if slug in set(today_df["slug"].unique().tolist()):
             today_df.loc[today_df["slug"] == slug, "deleted"] = True
@@ -171,10 +274,25 @@ class BookKeeperIO:
     def get_deleted_books(self, df: pd.DataFrame) -> set:
         """
         Get the deleted books.
+
+        :param df: the dataframe to get the deleted books from
+        :type df: pd.DataFrame
+
+        :return: the deleted books
+        :rtype: set
         """
         return set(df.query("deleted==True")["slug"].unique().tolist())
 
     def get_all_books(self) -> pd.DataFrame:
+        """
+        Get all the user's books.
+
+        Including deleted books.
+        Everything that is stored in S3.
+
+        :return: the user's books
+        :rtype: pd.DataFrame
+        """
         if self.search_user_table():
             books_df = wr.athena.read_sql_table(
                 table=f"{self.user_id}_books",
@@ -190,14 +308,23 @@ class BookKeeperIO:
     def get_books(self) -> pd.DataFrame:
         """
         Get the user's books.
+
+        :return: the user's books
+        :rtype: pd.DataFrame
         """
         all_books_df = self.get_all_books()
-        deleted_books = self.get_deleted_books(all_books_df)
+        deleted_books = self.get_deleted_books(all_books_df)  # noqa: F841
         return all_books_df.query("slug not in @deleted_books")
 
     def save_books(self, df: pd.DataFrame) -> bool:
         """
         Save the dataframe to the user's table.
+
+        :param df: the dataframe to save
+        :type df: pd.DataFrame
+
+        :return: whether the dataframe was saved or not
+        :rtype: bool
         """
         try:
             wr.s3.to_parquet(
@@ -211,10 +338,16 @@ class BookKeeperIO:
                 partition_cols=["current_date"],
             )
             return True
-        except Exception as e:
+        except Exception:  # noqa: B902
             return False
 
     def search_user_table(self) -> bool:
+        """
+        Search for the user's table in AWS Glue Catalog.
+
+        :return: whether the table exists or not
+        :rtype: bool
+        """
         return wr.catalog.does_table_exist(
             table=f"{self.user_id}_books", database="book_keeper"
         )
@@ -222,6 +355,12 @@ class BookKeeperIO:
     def get_latest_book_version(self, books_df: pd.DataFrame) -> pd.DataFrame:
         """
         Get the latest version of the books.
+
+        :param books_df: the dataframe with all the books
+        :type books_df: pd.DataFrame
+
+        :return: the latest version of the books
+        :rtype: pd.DataFrame
         """
         latest_update_per_book = (
             books_df.groupby("slug").agg({"current_date": "max"}).reset_index()
@@ -230,22 +369,31 @@ class BookKeeperIO:
             books_df, latest_update_per_book, on=["slug", "current_date"], how="inner"
         )
 
-    def update_tables(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def update_tables(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         Update the user's book list, today's batch and the latest state of the books.
+
+        :return: the user's book list, today's batch and the latest state of the books
+        :rtype: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
         """
         books_df = self.get_books()
 
         if not books_df.empty:
-            today = pd.Timestamp.today().normalize()
+            today = pd.Timestamp.today().normalize()  # noqa: F841
             today_batch_df = books_df.query("current_date==@today")
             latest_state_df = self.get_latest_book_version(books_df)
 
         return books_df, today_batch_df, latest_state_df
 
     def create_latest_book_update_view(self) -> bool:
+        """
+        Create the latest book update view through athena query.
+
+        :return: whether the view was created or not
+        :rtype: bool
+        """
         query = CREATE_LATEST_UPDATE_PER_BOOK_QUERY.format(self.user_id, self.user_id)
-        response = self.run_athena_query(query)
+        self._run_athena_query(query)
         return True
 
     def _run_athena_query(self, query: str) -> bool:
@@ -254,7 +402,16 @@ class BookKeeperIO:
         )
 
 
-def load_lottie_url(url: str):
+def load_lottie_url(url: str) -> Optional[dict]:
+    """
+    Load the lottie file located at given url.
+
+    :param url: the url to load
+    :type url: str
+
+    :return: the lottie file if request was successful
+    :rtype: Optional[dict]
+    """
     r = requests.get(url)
     if r.status_code == 200:
         return r.json()

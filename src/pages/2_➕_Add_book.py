@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+Add module of the app.
 
-import streamlit as st
-import pandas as pd
-from streamlit_lottie import st_lottie
+Add a new book to the collection of books that you maintain.
+"""
+
 from os import environ
+
+import pandas as pd
+import streamlit as st
+from streamlit_lottie import st_lottie
 
 from utils import BookKeeperIO, load_lottie_url
 

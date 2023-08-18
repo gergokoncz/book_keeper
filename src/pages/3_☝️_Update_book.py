@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+Update module of the app.
 
-import streamlit as st
-import pandas as pd
-from streamlit_lottie import st_lottie
+Update the state of a book.
+You mistyped some attributes or just have progressed in the book, update it here
+"""
+
 from os import environ
+
+import pandas as pd
+import streamlit as st
+from streamlit_lottie import st_lottie
 
 from utils import BookKeeperIO, load_lottie_url
 

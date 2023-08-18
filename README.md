@@ -1,7 +1,6 @@
-# book_keeper
+# BookKeeper
 
-A streamlit application to keep track of the books that you are reading. 
-
+A streamlit application to keep track of the books that you are reading or plan on reading. The app is deployed on [Streamlit Share](https://bookkeeper.streamlit.app/).
 
 ## Installation
 
@@ -16,13 +15,13 @@ poetry export --without-hashes --format=requirements.txt > requirements.txt
 ```
 
 But for local deployment the command to run is
-    
+
 ```bash
-poetry run streamlit run src/1_📈_Statistics.py
+poetry run streamlit run src/1_📈_Overview.py
 ```
 
 Of course you can always use the requirements.txt file to install the dependencies and run the app with the following commands:
 
 ```bash
-streamlit run src/1_📈_Statistics.py
+streamlit run src/1_📈_Overview.py
 ```
