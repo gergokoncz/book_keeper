@@ -100,8 +100,16 @@ if st.button("Add book"):
     else:
         st.warning("Book already exists")
 
-st.markdown("### Edited books")
-st.write(st.session_state.today_books_df)
+# show edited and deleted books
+today_books_df = st.session_state.today_books_df
+edited_books_df = today_books_df.query("deleted==False")
+deleted_books_df = today_books_df.query("deleted==True")
+
+st.markdown("### Edited books (today)")
+st.write(edited_books_df)
+
+st.markdown("### Deleted books (today)")
+st.write(deleted_books_df)
 
 if st.button("Save updates"):
     saved = st.session_state.bk.save_books(st.session_state.today_books_df)

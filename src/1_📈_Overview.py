@@ -40,10 +40,16 @@ st.markdown("A simple app to keep track of the books you read and you plan to re
 
 st.markdown("## Your stats")
 
-st.write(st.session_state.latest_book_state_df)
+st.write(
+    st.session_state.bk.remove_deleted_books(st.session_state.latest_book_state_df)
+)
 
-bkdata = BookKeeperDataOps(st.session_state.books_df)
-latest_books_df = bkdata.add_book_state(st.session_state.latest_book_state_df)
+bkdata = BookKeeperDataOps(
+    st.session_state.bk.remove_deleted_books(st.session_state.books_df)
+)
+latest_books_df = bkdata.add_books_state(
+    st.session_state.bk.remove_deleted_books(st.session_state.latest_book_state_df)
+)
 st.write(latest_books_df)
 
 fig = alt.Chart(latest_books_df).mark_bar().encode(x="state", y="count()")

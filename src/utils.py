@@ -56,7 +56,7 @@ class BookKeeperDataOps:
         """
         return df
 
-    def add_book_state(self, latest_books_df: pd.DataFrame) -> pd.DataFrame:
+    def add_books_state(self, latest_books_df: pd.DataFrame) -> pd.DataFrame:
         """
         Add the state of the book to the dataframe.
 
@@ -243,6 +243,30 @@ class BookKeeperIO:
 
         return True, self._append_book_to_df(book=book, finished=finished, df=df)
 
+    def revert_deletion_book(
+        self, slug: str, today_df: pd.DataFrame, latest_df: pd.DataFrame
+    ) -> Tuple[bool, pd.DataFrame]:
+        """
+        Revert the deletion of a book.
+
+        Can only be done on the same day deletion took place.
+
+        :param slug: the slug of the book to revert
+        :type slug: str
+        :param today_df: the dataframe to revert the book in
+        :type today_df: pd.DataFrame
+        :param latest_df: the latest dataframe of the user's books
+        :type latest_df: pd.DataFrame
+
+        :return: whether the book was reverted or not, the dataframe with the book reverted
+        :rtype: Tuple[bool, pd.DataFrame]
+        """
+        if slug in set(today_df["slug"].unique().tolist()):
+            today_df.loc[today_df["slug"] == slug, "deleted"] = False
+            return True, today_df
+        else:
+            return False, today_df
+
     def delete_book(
         self, slug: str, today_df: pd.DataFrame, latest_df: pd.DataFrame
     ) -> Tuple[bool, pd.DataFrame]:
@@ -305,9 +329,24 @@ class BookKeeperIO:
         else:
             return EXAMPLE_DATA
 
+    def remove_deleted_books(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Remove deleted books from the given dataframe.
+
+        :param df: the dataframe to remove deleted books from
+        :type df: pd.DataFrame
+
+        :return: the dataframe without the deleted books
+        :rtype: pd.DataFrame
+        """
+        deleted_books = self.get_deleted_books(df)  # noqa: F841
+        return df.query("slug not in @deleted_books")
+
     def get_books(self) -> pd.DataFrame:
         """
         Get the user's books.
+
+        Filter out deleted books.
 
         :return: the user's books
         :rtype: pd.DataFrame
@@ -376,7 +415,7 @@ class BookKeeperIO:
         :return: the user's book list, today's batch and the latest state of the books
         :rtype: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
         """
-        books_df = self.get_books()
+        books_df = self.get_all_books()
 
         if not books_df.empty:
             today = pd.Timestamp.today().normalize()  # noqa: F841
