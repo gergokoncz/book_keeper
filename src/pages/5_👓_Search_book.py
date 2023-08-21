@@ -25,7 +25,7 @@ st.markdown(
     """
 ## Search for a book
 Search for a book by title or author (slug),
-and see what updates have been added to it.
+and see what its history.
 """
 )
 
@@ -42,3 +42,16 @@ with st.spinner("Your books are loading..."):
             st.session_state.today_books_df,
             st.session_state.latest_book_state_df,
         ) = st.session_state.bk.update_tables()
+
+# select book by slug
+not_deleted_books = st.session_state.bk.remove_deleted_books(st.session_state.books_df)
+not_deleted_books_latest_state = st.session_state.latest_book_state_df.query(
+    "deleted==False"
+)
+selected_slug = st.selectbox(
+    "Select book", not_deleted_books_latest_state["slug"].unique()
+)
+
+# get the book
+selected_book = not_deleted_books.query("slug==@selected_slug")
+st.write(selected_book.sort_values("current_date", ascending=True))
