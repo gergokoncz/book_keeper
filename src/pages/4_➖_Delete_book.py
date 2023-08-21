@@ -17,18 +17,6 @@ from utils import BookKeeperIO, load_lottie_url
 
 st.set_page_config(layout="wide")
 
-if "bk" not in st.session_state:
-    bucket = environ.get("BOOKSTORAGE_BUCKET")
-    st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
-
-# get an update on the tables
-if "books_df" not in st.session_state:
-    (
-        st.session_state.books_df,
-        st.session_state.today_books_df,
-        st.session_state.latest_book_state_df,
-    ) = st.session_state.bk.update_tables()
-
 lottie_add = load_lottie_url(
     "https://assets7.lottiefiles.com/packages/lf20_nux6g0kx.json"
 )
@@ -40,6 +28,20 @@ st.markdown(
 Select the book by slug and confirm delete.
 """
 )
+
+with st.spinner("Your books are loading..."):
+
+    if "bk" not in st.session_state:
+        bucket = environ.get("BOOKSTORAGE_BUCKET")
+        st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
+
+    # get an update on the tables
+    if "books_df" not in st.session_state:
+        (
+            st.session_state.books_df,
+            st.session_state.today_books_df,
+            st.session_state.latest_book_state_df,
+        ) = st.session_state.bk.update_tables()
 
 selected_slug_for_deletion = st.selectbox(
     "Select book",

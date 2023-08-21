@@ -17,18 +17,6 @@ from utils import BookKeeperIO, load_lottie_url
 
 st.set_page_config(layout="wide")
 
-if "bk" not in st.session_state:
-    bucket = environ.get("BOOKSTORAGE_BUCKET")
-    st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
-
-# get an update on the tables
-if "books_df" not in st.session_state:
-    (
-        st.session_state.books_df,
-        st.session_state.today_books_df,
-        st.session_state.latest_book_state_df,
-    ) = st.session_state.bk.update_tables()
-
 lottie_books = load_lottie_url(
     "https://assets5.lottiefiles.com/packages/lf20_noyzw8ub.json"
 )
@@ -41,6 +29,20 @@ st.markdown(
 Select book and update details the book.
 """
 )
+
+with st.spinner("Your books are loading..."):
+
+    if "bk" not in st.session_state:
+        bucket = environ.get("BOOKSTORAGE_BUCKET")
+        st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
+
+    # get an update on the tables
+    if "books_df" not in st.session_state:
+        (
+            st.session_state.books_df,
+            st.session_state.today_books_df,
+            st.session_state.latest_book_state_df,
+        ) = st.session_state.bk.update_tables()
 
 selected_slug = st.selectbox(
     "Select book", st.session_state.latest_book_state_df["slug"].unique()
@@ -132,24 +134,28 @@ if st.button("Update book"):
     else:
         st.error("Something went wrong, please try again.")
 
+
 # show edited and deleted books
 today_books_df = st.session_state.today_books_df
 edited_books_df = today_books_df.query("deleted==False")
 deleted_books_df = today_books_df.query("deleted==True")
 
-st.markdown("### Edited books (today)")
-st.write(edited_books_df)
+if not edited_books_df.empty:
+    st.markdown("### Edited books - today")
+    st.write(edited_books_df)
 
-st.markdown("### Deleted books (today)")
-st.write(deleted_books_df)
+if not deleted_books_df.empty:
+    st.markdown("### Deleted books (today)")
+    st.write(deleted_books_df)
 
-if st.button("Save updates"):
-    saved = st.session_state.bk.save_books(st.session_state.today_books_df)
-    if saved:
-        st.success("Books saved!")
-        with st.spinner("Updating tables..."):
-            (
-                st.session_state.books_df,
-                st.session_state.today_books_df,
-                st.session_state.latest_book_state_df,
-            ) = st.session_state.bk.update_tables()
+if not today_books_df.empty:
+    if st.button("Save updates"):
+        saved = st.session_state.bk.save_books(st.session_state.today_books_df)
+        if saved:
+            st.success("Books saved!")
+            with st.spinner("Updating books..."):
+                (
+                    st.session_state.books_df,
+                    st.session_state.today_books_df,
+                    st.session_state.latest_book_state_df,
+                ) = st.session_state.bk.update_tables()
