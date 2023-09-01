@@ -9,6 +9,8 @@ Showing some basic statistics of the books that you have logged.
 from os import environ
 
 import altair as alt
+import matplotlib.pyplot as plt
+import seaborn as sns
 import streamlit as st
 from streamlit_lottie import st_lottie
 
@@ -42,17 +44,38 @@ with st.spinner("Your books are loading..."):
             st.session_state.latest_book_state_df,
         ) = st.session_state.bk.update_tables()
 
-st.write(
-    st.session_state.bk.remove_deleted_books(st.session_state.latest_book_state_df)
-)
+# st.write(
+#     st.session_state.bk.remove_deleted_books(st.session_state.latest_book_state_df)
+# )
 
-bkdata = BookKeeperDataOps(
-    st.session_state.bk.remove_deleted_books(st.session_state.books_df)
-)
+bkdata = BookKeeperDataOps()
 latest_books_df = bkdata.add_books_state(
     st.session_state.bk.remove_deleted_books(st.session_state.latest_book_state_df)
 )
 st.write(latest_books_df)
+
+in_progress_books = latest_books_df.query("state == 'in progress'")
+in_progress_books["progress_perc"] = round(
+    in_progress_books["page_current"] / in_progress_books["page_n"] * 100, 2
+)
+# in_progress_books.eval("progress_perc = page_current / page_n")
+
+# fig = plt.figure(figsize=(8, 6))
+# plt.title("Books currently in progress")
+# sns.barplot(data=in_progress_books, x="title", y="progress_perc")
+
+fig_in_progress = (
+    alt.Chart(in_progress_books)
+    .mark_bar(opacity=0.6, color="#f5bf42", size=10)
+    .encode(
+        x=alt.X("title", title="book title"),
+        y=alt.Y("progress_perc", title="percentage", scale=alt.Scale(domain=[0, 100])),
+    )
+    .properties(title="Books currently in progress")
+)
+
+st.altair_chart(fig_in_progress, use_container_width=True)
+
 
 fig = alt.Chart(latest_books_df).mark_bar().encode(x="state", y="count()")
 st.altair_chart(fig, use_container_width=True)

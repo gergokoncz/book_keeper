@@ -35,14 +35,9 @@ athena_result_bucket = environ.get("ATHENA_RESULT_BUCKET")
 class BookKeeperDataOps:
     """Class to handle the data related operations of the BookKeeper app."""
 
-    def __init__(self, books_df: pd.DataFrame):
-        """
-        Class constructor.
-
-        :param books_df: the dataframe of the books
-        :type books_df: pd.DataFrame
-        """
-        self.books_df = books_df
+    def __init__(self) -> None:
+        """Class constructor."""
+        ...
 
     def fillup_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         """
