@@ -54,15 +54,13 @@ latest_books_df = bkdata.add_books_state(
 )
 st.write(latest_books_df)
 
-in_progress_books = latest_books_df.query("state == 'in progress'")
-in_progress_books["progress_perc"] = round(
-    in_progress_books["page_current"] / in_progress_books["page_n"] * 100, 2
-)
-# in_progress_books.eval("progress_perc = page_current / page_n")
+st.write("## Filled up df")
+st.write(bkdata.fillup_dataframe(st.session_state.books_df))
 
-# fig = plt.figure(figsize=(8, 6))
-# plt.title("Books currently in progress")
-# sns.barplot(data=in_progress_books, x="title", y="progress_perc")
+in_progress_books = latest_books_df.query("state == 'in progress'")
+in_progress_books["progress_perc"] = in_progress_books.apply(
+    lambda x: round(x["page_current"] / x["page_n"] * 100, 2), axis=1
+)
 
 fig_in_progress = (
     alt.Chart(in_progress_books)

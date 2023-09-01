@@ -39,7 +39,7 @@ class BookKeeperDataOps:
         """Class constructor."""
         ...
 
-    def fillup_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    def fillup_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Fill up the dataframe with the missing columns.
 
@@ -61,7 +61,7 @@ class BookKeeperDataOps:
         :return: the dataframe updated with the state of the books
         :rtype: pd.DataFrame
         """
-        latest_books_df["state"] = BookState.NOT_STARTED.value
+        latest_books_df.loc[:, "state"] = BookState.NOT_STARTED.value
         latest_books_df.loc[
             latest_books_df["page_current"] > 0, "state"
         ] = BookState.IN_PROGRESS.value
