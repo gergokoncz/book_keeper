@@ -1,0 +1,17 @@
+credentials:
+  usernames:
+    gergokoncz:
+      email: koncz.gergo95@gmail.com
+      name: Gergo Koncz
+      password: $2b$12$DmTx7W3yOSNlOK/7NzbloekXC2HZsbOA82WCRK8yhQxiXt5CthiP6
+    test-user:
+      email: koncz.gergo95+1@gmail.com
+      name: Test User
+      password: $2b$12$/y8BoZeszh0eZlWjJznwUOmtpKyo.VrO/1Ztb0R0iTwbWlDq93sp.
+cookie:
+  expiry_days: 10
+  key: 91oIXK9sTc1Xxfd2GZt2wGQ9
+  name: bk_cookie_jyVXdOvD
+preauthorized:
+  emails:
+    - someemail@gmail.com

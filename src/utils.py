@@ -14,6 +14,8 @@ import awswrangler as wr
 import boto3
 import pandas as pd
 import requests
+import yaml
+from yaml.loader import SafeLoader
 
 from athena_queries import CREATE_LATEST_UPDATE_PER_BOOK_QUERY
 from example_data import EXAMPLE_DATA
@@ -31,6 +33,43 @@ class BookState(Enum):
 athena_client = boto3.client("athena", region_name="eu-north-1")
 athena_result_bucket = environ.get("ATHENA_RESULT_BUCKET")
 
+s3_client = boto3.client("s3", region_name="eu-north-1")
+
+
+class AuthIO:
+    """Class to handle the IO operations of the authentication."""
+
+    def __init__(self, bucket: str) -> None:
+        """Class constructor."""
+        self.bucket = bucket
+        self.config_filepath = "config/auth_config.yaml"
+
+    def get_auth_config(self) -> dict[str, Any]:
+        """
+        Get the contents of the authentication file.
+
+        :return: contents of the to the authentication file
+        :rtype: dict[str, Any]
+        """
+        result = s3_client.get_object(Bucket=self.bucket, Key=self.config_filepath)
+        return yaml.load(result["Body"], Loader=SafeLoader)
+
+    def update_auth_config(self, config: dict[str, Any]) -> bool:
+        """
+        Update the authentication file.
+
+        :param auth_file: the path to the authentication file
+        :type auth_file: str
+        """
+        yaml_content = yaml.dump(config, default_flow_style=False)
+        try:
+            s3_client.put_object(
+                Body=yaml_content, Bucket=self.bucket, Key=self.config_filepath
+            )
+            return True
+        except Exception:  # noqa: B902
+            return False
+
 
 class BookKeeperDataOps:
     """Class to handle the data related operations of the BookKeeper app."""
@@ -41,7 +80,11 @@ class BookKeeperDataOps:
 
     def fillup_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Fill up the dataframe with the missing columns.
+        Fill up the dataframe with missing rows.
+
+        Not all books are kept in all days but for some operations
+        we need the dataframe in a format like that.
+        For each date
 
         :param df: the dataframe to fill up
         :type df: pd.DataFrame

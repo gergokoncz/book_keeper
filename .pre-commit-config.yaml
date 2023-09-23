@@ -26,7 +26,12 @@ repos:
             --disallow-untyped-defs,
             --no-warn-no-return,
           ]
-        additional_dependencies: [tokenize-rt==3.2.0, types-requests==2.31.0.2]
+        additional_dependencies:
+          [
+            tokenize-rt==3.2.0,
+            types-requests==2.31.0.2,
+            types-PyYAML==6.0.12.12,
+          ]
   - repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.10.1
     hooks:

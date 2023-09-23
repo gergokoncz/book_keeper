@@ -10,9 +10,10 @@ from os import environ
 
 import pandas as pd
 import streamlit as st
+import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
 
-from utils import BookKeeperIO, load_lottie_url
+from utils import AuthIO, BookKeeperIO, load_lottie_url
 
 st.set_page_config(layout="wide")
 
@@ -30,100 +31,139 @@ The exceptions are the title and the author.
 """
 )
 
-with st.spinner("Your books are loading..."):
+## AUTH
 
-    if "bk" not in st.session_state:
-        bucket = environ.get("BOOKSTORAGE_BUCKET")
-        st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
+bucket = environ.get("BOOKSTORAGE_BUCKET")
+authio = AuthIO(bucket=bucket)
+config = authio.get_auth_config()
+# success = authio.update_auth_config(config)
 
-    # get an update on the tables
-    if "books_df" not in st.session_state:
-        (
-            st.session_state.books_df,
-            st.session_state.today_books_df,
-            st.session_state.latest_book_state_df,
-        ) = st.session_state.bk.update_tables()
+authenticator = stauth.Authenticate(
+    config["credentials"],
+    config["cookie"]["name"],
+    config["cookie"]["key"],
+    config["cookie"]["expiry_days"],
+    config["preauthorized"],
+)
 
-finished = st.checkbox("Finished")
-finish_date = None
+authenticator.login("Login", "main")
 
-col1, col2, col3 = st.columns(3)
+# Present content based on authentication status
+## If user is authenticated, show the app
+if st.session_state["authentication_status"]:
 
-with col1:
-    book_title = st.text_input("Title")
-    book_subtitle = st.text_input("Subtitle")
-    book_author = st.text_input("Author")
-    book_publisher = st.text_input("Publisher")
-    if finished:
-        finish_date = st.date_input("Finish date", value=None)
+    authenticator.logout("Logout", "sidebar")
 
-with col2:
-    published_year = st.number_input("Published year", min_value=0, max_value=2023)
-    book_location = st.text_input("Location - physical or virtual")
-    book_pageN = st.number_input(
-        "Number of pages", min_value=0, max_value=100_000, value=100
-    )
-    book_pageCurrent = st.number_input(
-        "Current page", min_value=0, max_value=100_000, value=0
-    )
+    with st.spinner("Your books are loading..."):
 
-with col3:
-    book_tag1 = st.text_input("Tag1")
-    # book_tag1 = st.multiselect("Tag1", st.session_state.books_df["tag1"].unique())
-    book_tag2 = st.text_input("Tag2")
-    book_tag3 = st.text_input("Tag3")
-    book_language = st.selectbox(
-        "Language", ["en", "hu", "de", "fr", "es", "it", "other"]
-    )
+        if "bk" not in st.session_state:
+            bucket = environ.get("BOOKSTORAGE_BUCKET")
+            st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
 
+        # get an update on the tables
+        if "books_df" not in st.session_state:
+            (
+                st.session_state.books_df,
+                st.session_state.today_books_df,
+                st.session_state.latest_book_state_df,
+            ) = st.session_state.bk.update_tables()
 
-if st.button("Add book"):
-    book = {
-        "title": book_title,
-        "subtitle": book_subtitle,
-        "author": book_author,
-        "location": book_location,
-        "publisher": book_publisher,
-        "published_year": published_year,
-        "page_n": book_pageN,
-        "page_current": book_pageCurrent,
-        "current_date": pd.Timestamp.today(),
-        "finish_date": finish_date,
-        "tag1": book_tag1,
-        "tag2": book_tag2,
-        "tag3": book_tag3,
-        "language": book_language,
-    }
-    success, st.session_state.today_books_df = st.session_state.bk.add_book(
-        book, finished, st.session_state.today_books_df
-    )
+    finished = st.checkbox("Finished")
+    finish_date = None
 
-    if success:
-        st.success("Books added!")
-    else:
-        st.warning("Book already exists")
+    col1, col2, col3 = st.columns(3)
 
-# show edited and deleted books
-today_books_df = st.session_state.today_books_df
-edited_books_df = today_books_df.query("deleted==False")
-deleted_books_df = today_books_df.query("deleted==True")
+    with col1:
+        book_title = st.text_input("Title")
+        book_subtitle = st.text_input("Subtitle")
+        book_author = st.text_input("Author")
+        book_publisher = st.text_input("Publisher")
+        if finished:
+            finish_date = st.date_input("Finish date", value=None)
 
-if not edited_books_df.empty:
-    st.markdown("### Edited books - today")
-    st.write(edited_books_df)
+    with col2:
+        published_year = st.number_input("Published year", min_value=0, max_value=2023)
+        book_location = st.text_input("Location - physical or virtual")
+        book_pageN = st.number_input(
+            "Number of pages", min_value=0, max_value=100_000, value=100
+        )
+        book_pageCurrent = st.number_input(
+            "Current page", min_value=0, max_value=100_000, value=0
+        )
 
-if not deleted_books_df.empty:
-    st.markdown("### Deleted books (today)")
-    st.write(deleted_books_df)
+    with col3:
+        book_tag1 = st.text_input("Tag1")
+        # book_tag1 = st.multiselect("Tag1", st.session_state.books_df["tag1"].unique())
+        book_tag2 = st.text_input("Tag2")
+        book_tag3 = st.text_input("Tag3")
+        book_language = st.selectbox(
+            "Language", ["en", "hu", "de", "fr", "es", "it", "other"]
+        )
 
-if not today_books_df.empty:
-    if st.button("Save updates"):
-        saved = st.session_state.bk.save_books(st.session_state.today_books_df)
-        if saved:
-            st.success("Books saved!")
-            with st.spinner("Updating books..."):
-                (
-                    st.session_state.books_df,
-                    st.session_state.today_books_df,
-                    st.session_state.latest_book_state_df,
-                ) = st.session_state.bk.update_tables()
+    if st.button("Add book"):
+        book = {
+            "title": book_title,
+            "subtitle": book_subtitle,
+            "author": book_author,
+            "location": book_location,
+            "publisher": book_publisher,
+            "published_year": published_year,
+            "page_n": book_pageN,
+            "page_current": book_pageCurrent,
+            "current_date": pd.Timestamp.today(),
+            "finish_date": finish_date,
+            "tag1": book_tag1,
+            "tag2": book_tag2,
+            "tag3": book_tag3,
+            "language": book_language,
+        }
+        success, st.session_state.today_books_df = st.session_state.bk.add_book(
+            book, finished, st.session_state.today_books_df
+        )
+
+        if success:
+            st.success("Books added!")
+        else:
+            st.warning("Book already exists")
+
+    # show edited and deleted books
+    today_books_df = st.session_state.today_books_df
+    edited_books_df = today_books_df.query("deleted==False")
+    deleted_books_df = today_books_df.query("deleted==True")
+
+    if not edited_books_df.empty:
+        st.markdown("### Edited books - today")
+        st.write(edited_books_df)
+
+    if not deleted_books_df.empty:
+        st.markdown("### Deleted books (today)")
+        st.write(deleted_books_df)
+
+    if not today_books_df.empty:
+        if st.button("Save updates"):
+            saved = st.session_state.bk.save_books(st.session_state.today_books_df)
+            if saved:
+                st.success("Books saved!")
+                with st.spinner("Updating books..."):
+                    (
+                        st.session_state.books_df,
+                        st.session_state.today_books_df,
+                        st.session_state.latest_book_state_df,
+                    ) = st.session_state.bk.update_tables()
+
+## If user gave wrong credentials
+elif st.session_state["authentication_status"] is False:
+    st.error("Username/password is incorrect")
+
+## If user has not logged in yet
+elif st.session_state["authentication_status"] is None:
+    st.warning("Please enter your username and password")
+    if new_user := st.checkbox("New user?"):
+        try:
+            if authenticator.register_user(
+                "Register user", "main", preauthorization=False
+            ):
+                authio.update_auth_config(config)
+                st.success("You have successfully registered!")
+        except Exception as e:  # noqa: B902
+            st.error(e)
