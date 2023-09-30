@@ -54,13 +54,23 @@ def main() -> None:
     ## If user is authenticated, show the app
     if st.session_state["authentication_status"]:
         authenticator.logout("Logout", "sidebar")
-
+        # modify user details
         try:
             if authenticator.update_user_details(
                 st.session_state["username"], "Update user details"
             ):
                 authio.update_auth_config(config)
                 st.success("You have successfully updated your details!")
+        except Exception as e:  # noqa: B902
+            st.error(e)
+
+        # reset password
+        try:
+            if authenticator.reset_password(
+                st.session_state["username"], "Reset password"
+            ):
+                authio.update_auth_config(config)
+                st.success("You have successfully reset your password!")
         except Exception as e:  # noqa: B902
             st.error(e)
 
