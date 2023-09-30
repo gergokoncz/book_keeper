@@ -35,7 +35,6 @@ def main() -> None:
     )
 
     ## AUTH
-
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)
     config = authio.get_auth_config()

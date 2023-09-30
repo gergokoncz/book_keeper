@@ -16,6 +16,8 @@ from streamlit_lottie import st_lottie
 
 from utils import AuthIO, BookKeeperIO, load_lottie_url
 
+lottie_asset_url = "https://assets5.lottiefiles.com/packages/lf20_noyzw8ub.json"
+
 
 def main() -> None:
     """Main flow of the Update page."""
@@ -23,9 +25,7 @@ def main() -> None:
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    lottie_books = load_lottie_url(
-        "https://assets5.lottiefiles.com/packages/lf20_noyzw8ub.json"
-    )
+    lottie_books = load_lottie_url(lottie_asset_url)
     st_lottie(lottie_books, speed=1, height=100, key="initial")
 
     st.markdown(
@@ -36,7 +36,6 @@ def main() -> None:
     )
 
     ## AUTH
-
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)
     config = authio.get_auth_config()

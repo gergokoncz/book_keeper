@@ -14,6 +14,10 @@ from streamlit_lottie import st_lottie
 
 from utils import AuthIO, BookKeeperIO, load_lottie_url
 
+lottie_asset_url = (
+    "https://lottie.host/4b6cf1c6-5ba6-4d4e-896f-64121f952847/sZlE6SNKZf.json"
+)
+
 
 def main() -> None:
     """Main flow of the Search page."""
@@ -21,9 +25,7 @@ def main() -> None:
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    lottie_add = load_lottie_url(
-        "https://lottie.host/4b6cf1c6-5ba6-4d4e-896f-64121f952847/sZlE6SNKZf.json"
-    )
+    lottie_add = load_lottie_url(lottie_asset_url)
     st_lottie(lottie_add, speed=1, height=100, key="initial")
 
     st.markdown(
@@ -35,7 +37,6 @@ def main() -> None:
     )
 
     ## AUTH
-
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)
     config = authio.get_auth_config()
