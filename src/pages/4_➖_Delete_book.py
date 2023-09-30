@@ -19,7 +19,9 @@ from utils import AuthIO, BookKeeperIO, load_lottie_url
 
 def main() -> None:
     """Main flow of the Delete page."""
-    st.set_page_config(layout="wide")
+    st.set_page_config(
+        page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
+    )
 
     lottie_add = load_lottie_url(
         "https://assets7.lottiefiles.com/packages/lf20_nux6g0kx.json"

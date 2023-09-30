@@ -1,49 +1,87 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-This is the contacts page for BookKeeper .
+This is the profile page for BookKeeper .
 
-Showing some basic statistics of the books that you have logged.
+Enables you to change user details, except username.
 """
+
+from os import environ
+
 import streamlit as st
+import streamlit_authenticator as stauth
+from streamlit_lottie import st_lottie
+
+from utils import AuthIO, BookKeeperIO, load_lottie_url
+
+lottie_asset_url = (
+    "https://lottie.host/850fc636-eca1-4080-ba93-8bf228a95437/ZadfNJek3L.json"
+)
 
 
 def main() -> None:
-    """Main flow of the Profile page."""
+    """Main flow of the Search page."""
     st.set_page_config(
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    st.title("Contact")
-    st.divider()
+    lottie_add = load_lottie_url(lottie_asset_url)
+    st_lottie(lottie_add, speed=1, height=100, key="initial")
+
     st.markdown(
         """
-                The BookKeeper project is maintaned by a single developer, Gergo Koncz.
-
-                The goal was to get familiar with **streamlit** and to learn how to write a simple web app in **python**.
-
-                My info is listed below.
-                If you have any questions, suggestions, or just want to say hi, please feel free to contact me on any of the channels.
-                Furthermore, please feel free to submit PRs to the github project.
-                """
+        ## Your profile
+        """
     )
 
-    st.divider()
-    col1, col2 = st.columns(2)
+    ## AUTH
 
-    with col1:
-        st.markdown("**email:**")
-        st.markdown("**linkedin:**")
-        st.write("**github profile:**")
-        st.write("**github project page:**")
+    bucket = environ.get("BOOKSTORAGE_BUCKET")
+    authio = AuthIO(bucket=bucket)
+    config = authio.get_auth_config()
 
-    with col2:
-        st.write("[koncz.gergo95@gmail.com](mailto:koncz.gergo95@gmail.com)")
-        st.write("[Gergo Koncz](https://www.linkedin.com/in/gergo-koncz/)")
-        st.write("[gergokoncz](https://github.com/gergokoncz)")
-        st.write("[gergokoncz/book_keeper](https://github.com/gergokoncz/book_keeper)")
+    authenticator = stauth.Authenticate(
+        config["credentials"],
+        config["cookie"]["name"],
+        config["cookie"]["key"],
+        config["cookie"]["expiry_days"],
+        config["preauthorized"],
+    )
 
-    st.divider()
+    authenticator.login("Login", "main")
+
+    # Present content based on authentication status
+    ## If user is authenticated, show the app
+    if st.session_state["authentication_status"]:
+        authenticator.logout("Logout", "sidebar")
+
+        try:
+            if authenticator.update_user_details(
+                st.session_state["username"], "Update user details"
+            ):
+                authio.update_auth_config(config)
+                st.success("You have successfully updated your details!")
+        except Exception as e:  # noqa: B902
+            st.error(e)
+
+    ## If user gave wrong credentials
+    elif st.session_state["authentication_status"] is False:
+        st.error("Username/password is incorrect")
+
+    ## If user has not logged in yet
+    elif st.session_state["authentication_status"] is None:
+        st.warning("Please enter your username and password")
+
+        # enable registration
+        if st.checkbox("New user?"):
+            try:
+                if authenticator.register_user(
+                    "Register user", "main", preauthorization=False
+                ):
+                    authio.update_auth_config(config)
+                    st.success("You have successfully registered!")
+            except Exception as e:  # noqa: B902
+                st.error(e)
 
 
 if __name__ == "__main__":

@@ -3,14 +3,16 @@
 """
 This is the contacts page for BookKeeper .
 
-Showing some basic statistics of the books that you have logged.
+Showing contact information for maintainer.
 """
 import streamlit as st
 
 
 def main() -> None:
     """Main flow of the Contact page."""
-    st.set_page_config(page_title="BookKeeper", page_icon=":closed_book:")
+    st.set_page_config(
+        page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
+    )
 
     st.title("Contact")
     st.divider()

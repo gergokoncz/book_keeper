@@ -8,7 +8,6 @@ Search your books by name and see event log for them.
 
 from os import environ
 
-import pandas as pd
 import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
@@ -18,7 +17,9 @@ from utils import AuthIO, BookKeeperIO, load_lottie_url
 
 def main() -> None:
     """Main flow of the Search page."""
-    st.set_page_config(layout="wide")
+    st.set_page_config(
+        page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
+    )
 
     lottie_add = load_lottie_url(
         "https://lottie.host/4b6cf1c6-5ba6-4d4e-896f-64121f952847/sZlE6SNKZf.json"
