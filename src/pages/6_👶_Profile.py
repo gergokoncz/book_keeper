@@ -14,6 +14,7 @@ from streamlit_lottie import st_lottie
 
 from utils import AuthIO, BookKeeperIO, load_lottie_url
 
+# GLOBALS
 lottie_asset_url = (
     "https://lottie.host/850fc636-eca1-4080-ba93-8bf228a95437/ZadfNJek3L.json"
 )

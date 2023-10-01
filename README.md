@@ -25,3 +25,7 @@ Of course you can always use the requirements.txt file to install the dependenci
 ```bash
 streamlit run src/1_📈_Overview.py
 ```
+
+## Authentication
+
+The following post was followed: [blog](https://blog.streamlit.io/streamlit-authenticator-part-1-adding-an-authentication-component-to-your-app/)

@@ -10,6 +10,7 @@ from os import environ
 
 import altair as alt
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 import streamlit as st
 import streamlit_authenticator as stauth
@@ -17,11 +18,13 @@ from streamlit_lottie import st_lottie
 
 from utils import AuthIO, BookKeeperDataOps, BookKeeperIO, load_lottie_url
 
+# GLOBALS
 lottie_asset_url = "https://assets3.lottiefiles.com/packages/lf20_4XmSkB.json"
 
 
 def main() -> None:
     """Main flow of the Overview page."""
+    ## CONFIG
     st.set_page_config(
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
@@ -37,7 +40,6 @@ def main() -> None:
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)
     config = authio.get_auth_config()
-    # success = authio.update_auth_config(config)
 
     authenticator = stauth.Authenticate(
         config["credentials"],
@@ -58,7 +60,7 @@ def main() -> None:
         ## Content of application goes here
         st.write(f"Welcome {st.session_state['name']}!")
 
-        st.markdown("## Your stats")
+        st.divider()
 
         with st.spinner("Your books are loading..."):
 
@@ -81,19 +83,27 @@ def main() -> None:
                 st.session_state.latest_book_state_df
             )
         )
-        st.write(latest_books_df)
+        # st.write(latest_books_df)
 
-        st.write("## Filled up df")
-        st.write(bkdata.fillup_dataframe(st.session_state.books_df))
+        st.write("## Books currently in progress")
 
+        ## BOOKS currently in progress
         in_progress_books = latest_books_df.query("state == 'in progress'")
         in_progress_books["progress_perc"] = in_progress_books.apply(
             lambda x: round(x["page_current"] / x["page_n"] * 100, 2), axis=1
         )
 
+        cols = st.columns(in_progress_books.shape[0])
+        col_counter = 0
+        for _, book in in_progress_books.iterrows():
+            with cols[col_counter]:
+                # st.write(f"{book['title']} - {book['progress_perc']}%")
+                st.metric(label=f"{book['title']} (%)", value=book["progress_perc"])
+            col_counter += 1
+
         fig_in_progress = (
             alt.Chart(in_progress_books)
-            .mark_bar(opacity=0.6, color="#f5bf42", size=10)
+            .mark_bar(opacity=0.6, color="#f5bf42", size=20)
             .encode(
                 x=alt.X("title", title="book title"),
                 y=alt.Y(
@@ -107,8 +117,36 @@ def main() -> None:
 
         st.altair_chart(fig_in_progress, use_container_width=True)
 
-        fig = alt.Chart(latest_books_df).mark_bar().encode(x="state", y="count()")
-        st.altair_chart(fig, use_container_width=True)
+        ## Show reading statistics
+        st.write("## Reading statistics")
+        filled_up_df = bkdata.fill_up_dataframe(st.session_state.books_df)
+
+        summed_pages = (
+            filled_up_df.groupby("current_date")
+            .agg({"page_current": "sum"})
+            .reset_index()
+        )
+        # plot = sns.lineplot(data=summed_pages, x="current_date", y="page_current")
+        # st.pyplot(plot.figure)
+
+        fig_read_pages = (
+            alt.Chart(summed_pages)
+            .mark_line(opacity=0.6, color="#f5bf42", size=10)
+            .encode(
+                x=alt.X("current_date", title="date"),
+                y=alt.Y("page_current", title="pages read"),
+            )
+        )
+
+        fig_books_ratio = (
+            alt.Chart(latest_books_df).mark_arc().encode(color="state", theta="count()")
+        )
+        chart_col1, chart_col2 = st.columns(2)
+        with chart_col1:
+            st.altair_chart(fig_read_pages, use_container_width=True)
+
+        with chart_col2:
+            st.altair_chart(fig_books_ratio, use_container_width=True)
 
     ## If user gave wrong credentials
     elif st.session_state["authentication_status"] is False:
