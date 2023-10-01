@@ -123,6 +123,58 @@ class BookKeeperDataOps:
         :return: the dataframe filled up
         :rtype: pd.DataFrame
         """
+        # sort df by slug and date
+        books_df.sort_values(by=["slug", "current_date"], inplace=True)
+
+        # create new df with all unique dates
+        unique_dates = pd.date_range(
+            books_df["current_date"].min(), books_df["current_date"].max(), freq="D"
+        )
+
+        # cross join unique dates with unique slugs
+        unique_slugs = books_df["slug"].unique()
+        cartesian_product = pd.MultiIndex.from_product(
+            [unique_slugs, unique_dates], names=["slug", "current_date"]
+        )
+        cross_join_df = pd.DataFrame(index=cartesian_product).reset_index()
+
+        # merge cross join with books_df
+        result_df = cross_join_df.merge(
+            books_df, how="left", on=["slug", "current_date"]
+        )
+
+        # sort and reset the index of the result df
+        result_df.sort_values(by=["slug", "current_date"], inplace=True)
+        result_df.reset_index(drop=True, inplace=True)
+
+        # interpolate the missing values
+        result_df = result_df.groupby("slug", group_keys=False).apply(
+            self._custom_interpolate
+        )
+
+        # fill remaining missing values with 0
+        result_df["page_current"].fillna(0, inplace=True)
+
+        return result_df
+
+    def _custom_interpolate(self, group: pd.DataFrame) -> pd.DataFrame:
+        group["page_current"] = group["page_current"].interpolate(method="ffill")
+        return group
+
+    def _fill_up_dataframe(self, books_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fill up the dataframe with missing rows.
+
+        Not all books are kept in all days but for some operations
+        we need the dataframe in a format like that.
+        For each date
+
+        :param books_df: the dataframe to fill up
+        :type df: pd.DataFrame
+
+        :return: the dataframe filled up
+        :rtype: pd.DataFrame
+        """
         df_list: pd.DataFrame = []
         df_dates = books_df["current_date"].sort_values().unique()
         for book in books_df["slug"].unique():
