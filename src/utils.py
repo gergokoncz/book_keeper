@@ -8,7 +8,7 @@ With classes and functions for IO and data manipulation.
 import time
 from enum import Enum
 from os import environ
-from typing import Any, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple
 
 import awswrangler as wr
 import boto3
@@ -78,7 +78,38 @@ class BookKeeperDataOps:
         """Class constructor."""
         ...
 
-    def fillup_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+    def fill_up_book_df(
+        self, book_df: pd.DataFrame, df_dates: Iterable[pd.Timestamp]
+    ) -> pd.DataFrame:
+        """
+        Given current logs for book fill up the dataframe for given dates.
+
+        :param book_df: the dataframe to fill up
+        :type book_df: pd.DataFrame
+        :param df_dates: the dates to fill up the dataframe for
+        :type df_dates: Iterable[pd.Timestamp]
+
+        :return: the dataframe filled up
+        :rtype: pd.DataFrame
+        """
+        latest_log: pd.DataFrame
+        rows_to_add: list[pd.DataFrame] = []
+        first_log_date = book_df["current_date"].min()
+
+        for date in (d for d in df_dates if d >= first_log_date):
+            row_for_date = book_df.query(f"current_date == '{date}'")
+
+            if row_for_date.shape[0] > 0:
+                latest_log = row_for_date.iloc[0]
+
+            else:
+                new_row = latest_log.copy()
+                new_row["current_date"] = date
+                rows_to_add.append(new_row)
+
+        return pd.concat([pd.DataFrame(rows_to_add), book_df], axis=0)
+
+    def fill_up_dataframe(self, books_df: pd.DataFrame) -> pd.DataFrame:
         """
         Fill up the dataframe with missing rows.
 
@@ -86,13 +117,39 @@ class BookKeeperDataOps:
         we need the dataframe in a format like that.
         For each date
 
-        :param df: the dataframe to fill up
+        :param books_df: the dataframe to fill up
         :type df: pd.DataFrame
 
         :return: the dataframe filled up
         :rtype: pd.DataFrame
         """
-        return df
+        df_list: pd.DataFrame = []
+        df_dates = books_df["current_date"].sort_values().unique()
+        for book in books_df["slug"].unique():
+            try:
+                escaped_book = book.replace("'", "''")
+                query = f"slug == '{escaped_book}'"
+                df_list.append(
+                    self.fill_up_book_df(
+                        book_df=books_df.query(query).copy(), df_dates=df_dates
+                    )
+                )
+            except Exception as e:  # noqa: B902
+                print(e)
+
+        return pd.concat(df_list, axis=0)
+
+    def get_earliest_log_per_book(books_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Get the earliest log per book.
+
+        :param books_df: the with all the book logs
+        :type books_df: pd.DataFrame
+
+        :return: the earliest log per book
+        :rtype: pd.DataFrame
+        """
+        return books_df.groupby("slug").agg({"current_date": "min"}).reset_index()
 
     def add_books_state(self, latest_books_df: pd.DataFrame) -> pd.DataFrame:
         """
