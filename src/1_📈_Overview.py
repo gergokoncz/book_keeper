@@ -20,6 +20,7 @@ from utils import AuthIO, BookKeeperDataOps, BookKeeperIO, load_lottie_url
 
 # GLOBALS
 lottie_asset_url = "https://assets3.lottiefiles.com/packages/lf20_4XmSkB.json"
+custom_color_scheme = ["#FF5733", "#33FF57", "#5733FF", "#FFFF33", "#33FFFF"]
 
 
 def main() -> None:
@@ -35,6 +36,8 @@ def main() -> None:
     st.title("BookKeeper")
 
     st.markdown("Keep track of the books you read or you plan to read.")
+
+    st.divider()
 
     ## AUTH
     bucket = environ.get("BOOKSTORAGE_BUCKET")
@@ -56,11 +59,6 @@ def main() -> None:
     if st.session_state["authentication_status"]:
 
         authenticator.logout("Logout", "sidebar")
-
-        ## Content of application goes here
-        st.write(f"Welcome {st.session_state['name']}!")
-
-        st.divider()
 
         with st.spinner("Your books are loading..."):
 
@@ -101,24 +99,25 @@ def main() -> None:
                 st.metric(label=f"{book['title']} (%)", value=book["progress_perc"])
             col_counter += 1
 
-        fig_in_progress = (
-            alt.Chart(in_progress_books)
-            .mark_bar(opacity=0.6, color="#f5bf42", size=20)
-            .encode(
-                x=alt.X("title", title="book title"),
-                y=alt.Y(
-                    "progress_perc",
-                    title="percentage",
-                    scale=alt.Scale(domain=[0, 100]),
-                ),
-            )
-            .properties(title="Books currently in progress")
-        )
+        # fig_in_progress = (
+        #     alt.Chart(in_progress_books)
+        #     .mark_bar(opacity=0.6, color="#f5bf42", size=20)
+        #     .encode(
+        #         x=alt.X("title", title="book title"),
+        #         y=alt.Y(
+        #             "progress_perc",
+        #             title="percentage",
+        #             scale=alt.Scale(domain=[0, 100]),
+        #         ),
+        #     )
+        #     .properties(title="Books currently in progress")
+        # )
 
-        st.altair_chart(fig_in_progress, use_container_width=True)
+        # st.altair_chart(fig_in_progress, use_container_width=True)
 
         ## Show reading statistics
-        st.write("## Reading statistics")
+        st.divider()
+
         filled_up_df = bkdata.fill_up_dataframe(st.session_state.books_df)
 
         summed_pages = (
@@ -130,8 +129,8 @@ def main() -> None:
         # st.pyplot(plot.figure)
 
         fig_read_pages = (
-            alt.Chart(summed_pages)
-            .mark_line(opacity=0.6, color="#f5bf42", size=10)
+            alt.Chart(summed_pages, title="Pages read over time")
+            .mark_line(opacity=0.8, color="#f5bf42", size=6)
             .encode(
                 x=alt.X("current_date", title="date"),
                 y=alt.Y("page_current", title="pages read"),
@@ -139,14 +138,53 @@ def main() -> None:
         )
 
         fig_books_ratio = (
-            alt.Chart(latest_books_df).mark_arc().encode(color="state", theta="count()")
+            alt.Chart(latest_books_df, title="Books by current state of progress")
+            .mark_arc(opacity=0.8)
+            .encode(
+                color=alt.Color("state", scale=alt.Scale(scheme="accent")),
+                theta="count()",
+            )
+        )
+
+        fig_books_by_published_date = (
+            alt.Chart(
+                latest_books_df.query("published_year > 0"),
+                title="Books by published year",
+            )
+            .mark_bar(opacity=0.7, color="#f5bf42", size=8)
+            .encode(
+                x=alt.X(
+                    "published_year", title="published year", axis=alt.Axis(format="d")
+                ),
+                y=alt.Y("count()", title="number of books"),
+            )
+        )
+        fig_books_by_published_date_recent = (
+            alt.Chart(
+                latest_books_df.query("published_year > 2000"),
+                title="Books by published year and current state of progress (recent)",
+            )
+            .mark_bar(opacity=0.8, color="#f5bf42", size=6)
+            .encode(
+                x=alt.X(
+                    "published_year", title="published year", axis=alt.Axis(format="d")
+                ),
+                y=alt.Y("count()", title="number of books"),
+                color=alt.Color("state", scale=alt.Scale(scheme="accent")),
+            )
         )
         chart_col1, chart_col2 = st.columns(2)
         with chart_col1:
             st.altair_chart(fig_read_pages, use_container_width=True)
+            st.altair_chart(fig_books_by_published_date, use_container_width=True)
 
         with chart_col2:
             st.altair_chart(fig_books_ratio, use_container_width=True)
+            st.altair_chart(
+                fig_books_by_published_date_recent, use_container_width=True
+            )
+
+        st.divider()
 
     ## If user gave wrong credentials
     elif st.session_state["authentication_status"] is False:

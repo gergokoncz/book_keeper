@@ -36,6 +36,8 @@ def main() -> None:
     """
     )
 
+    st.divider()
+
     ## AUTH
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)
@@ -161,6 +163,8 @@ def main() -> None:
                 st.success("Books updated!")
             else:
                 st.error("Something went wrong, please try again.")
+
+        st.divider()
 
         # show edited and deleted books
         today_books_df = st.session_state.today_books_df
