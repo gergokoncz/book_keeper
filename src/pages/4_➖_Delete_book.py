@@ -97,6 +97,8 @@ def main() -> None:
             else:
                 st.error("Something went wrong, please try again.")
 
+        st.divider()
+
         st.markdown(
             """
         ## Revert deletion of book

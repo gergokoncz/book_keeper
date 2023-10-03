@@ -37,6 +37,8 @@ def main() -> None:
     """
     )
 
+    st.divider()
+
     ## AUTH
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)
@@ -129,9 +131,11 @@ def main() -> None:
             )
 
             if success:
-                st.success("Books added!")
+                st.success("Book added!")
             else:
                 st.warning("Book already exists")
+
+        st.divider()
 
         # show edited and deleted books
         today_books_df = st.session_state.today_books_df
