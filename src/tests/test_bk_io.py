@@ -10,5 +10,5 @@ from src.utils import BookKeeperIO
 def test_constructor():
     """Test the constructor of the BookKeeperIO class."""
     bk = BookKeeperIO("gergokoncz", bucket="bookstorage")
-    assert bk.username == "gergokoncz"
+    assert bk.user_id == "gergokoncz"
     assert bk.bucket == "bookstorage"
