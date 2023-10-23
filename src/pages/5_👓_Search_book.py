@@ -33,7 +33,8 @@ def main() -> None:
         """
     ## Search for a book
     Search for a book by title or author (slug),
-    and see what its history.
+    and see its history.
+    Filter books by properties.
     """
     )
 

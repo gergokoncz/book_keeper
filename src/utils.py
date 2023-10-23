@@ -78,6 +78,24 @@ class BookKeeperDataOps:
         """Class constructor."""
         ...
 
+    def filter_book_by_property(
+        self, colname: str, value: Any, df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Filter the dataframe by given property.
+
+        :param colname: the name of the column to filter by
+        :type colname: str
+        :param value: the value to filter by
+        :type value: Any
+        :param df: the dataframe to filter
+        :type df: pd.DataFrame
+
+        :return: the filtered dataframe
+        :rtype: pd.DataFrame
+        """
+        return df.query(f"{colname}==@value")
+
     def fill_up_book_df(
         self, book_df: pd.DataFrame, df_dates: Iterable[pd.Timestamp]
     ) -> pd.DataFrame:
@@ -160,36 +178,6 @@ class BookKeeperDataOps:
     def _custom_interpolate(self, group: pd.DataFrame) -> pd.DataFrame:
         group["page_current"] = group["page_current"].interpolate(method="ffill")
         return group
-
-    def _fill_up_dataframe(self, books_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Fill up the dataframe with missing rows.
-
-        Not all books are kept in all days but for some operations
-        we need the dataframe in a format like that.
-        For each date
-
-        :param books_df: the dataframe to fill up
-        :type df: pd.DataFrame
-
-        :return: the dataframe filled up
-        :rtype: pd.DataFrame
-        """
-        df_list: pd.DataFrame = []
-        df_dates = books_df["current_date"].sort_values().unique()
-        for book in books_df["slug"].unique():
-            try:
-                escaped_book = book.replace("'", "''")
-                query = f"slug == '{escaped_book}'"
-                df_list.append(
-                    self.fill_up_book_df(
-                        book_df=books_df.query(query).copy(), df_dates=df_dates
-                    )
-                )
-            except Exception as e:  # noqa: B902
-                print(e)
-
-        return pd.concat(df_list, axis=0)
 
     def get_earliest_log_per_book(books_df: pd.DataFrame) -> pd.DataFrame:
         """
