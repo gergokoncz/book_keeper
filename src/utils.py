@@ -17,8 +17,8 @@ import requests
 import yaml
 from yaml.loader import SafeLoader
 
-from src.athena_queries import CREATE_LATEST_UPDATE_PER_BOOK_QUERY
-from src.example_data import EXAMPLE_DATA
+from athena_queries import CREATE_LATEST_UPDATE_PER_BOOK_QUERY
+from example_data import EXAMPLE_DATA
 
 
 class BookState(Enum):
