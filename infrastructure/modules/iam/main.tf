@@ -53,7 +53,9 @@ resource "aws_iam_policy" "book_keeper_store_policy" {
       ],
       "Resource": [
         "arn:aws:s3:::book-keeper-store-bucket",
-        "arn:aws:s3:::book-keeper-store-bucket/*"
+        "arn:aws:s3:::book-keeper-store-bucket/*",
+        "arn:aws:s3:::book-keeper-test-bucket",
+        "arn:aws:s3:::book-keeper-test-bucket/*"
       ]
     },
         {
