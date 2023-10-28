@@ -11,7 +11,8 @@ A streamlit application to keep track of the books that you are reading or plan 
   - [Deployments](#deployments)
   - [Authentication](#authentication)
   - [Testing](#testing)
-    - [Running the tests](#running-the-tests)
+    - [Running the tests locally](#running-the-tests-locally)
+    - [Github setup](#github-setup)
 
 ## Infrastructure
 
@@ -64,7 +65,7 @@ The following post was followed: [blog](https://blog.streamlit.io/streamlit-auth
 For testing **pytest** is used and the tests are found in _/src/tests_. At the moment proper test coverage is a work in progress.
 As far as infrastructure goes a separate bucket has been set up with a separate user who has rights for the testing bucket but not the production one. Obviously, that would have been pretty bad practice. For more on infrastructure see the [Infrastructure](#infrastructure) section.
 
-### Running the tests
+### Running the tests locally
 
 The tests are run with the following command:
 
@@ -74,3 +75,9 @@ pytest . -v
 # or locally
 poetry run pytest . -v
 ```
+
+### Github setup
+
+For each PR a Github action workflow is run to test the code. The workflow is found in _.github/workflows_ and is called _pytest.yml_. The workflow is run on **python3.10** and **3.11** and it runs the same command as above.
+
+For the **AWS** part the workflow has access to a real **S3 bucket** with as the credentials for the test user have been added as repository secrets and the rest is taken care of by the workflow.
