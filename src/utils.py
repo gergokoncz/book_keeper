@@ -96,6 +96,51 @@ class BookKeeperDataOps:
         """
         return df.query(f"{colname}==@value")
 
+    def filter_books(
+        self,
+        latest_book_state_df: pd.DataFrame,
+        s_author: str,
+        s_published_year_min: int,
+        s_published_year_max: int,
+    ) -> pd.DataFrame:
+        """
+        Filter the books by given properties.
+
+        :param latest_book_state_df: the dataframe to filter
+        :type latest_book_state_df: pd.DataFrame
+        :param s_author: the author to filter by
+        :type s_author: str
+        :param s_published_year_min: the min published year to filter by
+        :type s_published_year_min: int
+        :param s_published_year_max: the max published year to filter by
+        :type s_published_year_max: int
+
+        :return: the filtered dataframe
+        :rtype: pd.DataFrame
+        """
+        filtered_df = latest_book_state_df
+        if s_author:
+            filtered_df = filtered_df.query("author==@s_author")
+        if s_published_year_min:
+            filtered_df = filtered_df.query("published_year>=@s_published_year_min")
+        if s_published_year_max:
+            filtered_df = filtered_df.query("published_year<=@s_published_year_max")
+        return filtered_df
+
+    def get_logs_for_book(self, books_df: pd.DataFrame, slug: str) -> pd.DataFrame:
+        """
+        Get the logs for a given book.
+
+        :param slug: the slug of the book to get the logs for
+        :type slug: str
+        :param books_df: the dataframe to get the logs from
+        :type books_df: pd.DataFrame
+
+        :return: the logs for the given book
+        :rtype: pd.DataFrame
+        """
+        return books_df.query(f"slug=='{slug}'")
+
     def fill_up_book_df(
         self, book_df: pd.DataFrame, df_dates: Iterable[pd.Timestamp]
     ) -> pd.DataFrame:
