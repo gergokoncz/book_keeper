@@ -14,6 +14,7 @@ import awswrangler as wr
 import boto3
 import pandas as pd
 import requests
+import streamlit as st
 import yaml
 from yaml.loader import SafeLoader
 
@@ -77,6 +78,75 @@ class BookKeeperDataOps:
     def __init__(self) -> None:
         """Class constructor."""
         ...
+
+    def filter_book_by_property(
+        self, colname: str, value: Any, df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Filter the dataframe by given property.
+
+        :param colname: the name of the column to filter by
+        :type colname: str
+        :param value: the value to filter by
+        :type value: Any
+        :param df: the dataframe to filter
+        :type df: pd.DataFrame
+
+        :return: the filtered dataframe
+        :rtype: pd.DataFrame
+        """
+        return df.query(f"{colname}==@value")
+
+    def filter_books(
+        self,
+        latest_book_state_df: pd.DataFrame,
+        s_author: str,
+        s_published_year_min: int,
+        s_published_year_max: int,
+        s_publisher: str,
+    ) -> pd.DataFrame:
+        """
+        Filter the books by given properties.
+
+        :param latest_book_state_df: the dataframe to filter
+        :type latest_book_state_df: pd.DataFrame
+        :param s_author: the author to filter by
+        :type s_author: str
+        :param s_published_year_min: the min published year to filter by
+        :type s_published_year_min: int
+        :param s_published_year_max: the max published year to filter by
+        :type s_published_year_max: int
+        :param s_publisher: the publisher to filter by
+        :type s_publisher: str
+
+        :return: the filtered dataframe
+        :rtype: pd.DataFrame
+        """
+        filtered_df = latest_book_state_df
+        if s_author:
+            print(s_author)
+            filtered_df = filtered_df.query("author==@s_author")
+        if s_publisher:
+            filtered_df = filtered_df.query("publisher==@s_publisher")
+        if s_published_year_min:
+            filtered_df = filtered_df.query("published_year>=@s_published_year_min")
+        if s_published_year_max:
+            filtered_df = filtered_df.query("published_year<=@s_published_year_max")
+        return filtered_df
+
+    def get_logs_for_book(self, books_df: pd.DataFrame, slug: str) -> pd.DataFrame:
+        """
+        Get the logs for a given book.
+
+        :param slug: the slug of the book to get the logs for
+        :type slug: str
+        :param books_df: the dataframe to get the logs from
+        :type books_df: pd.DataFrame
+
+        :return: the logs for the given book
+        :rtype: pd.DataFrame
+        """
+        return books_df.query(f"slug=='{slug}'")
 
     def fill_up_book_df(
         self, book_df: pd.DataFrame, df_dates: Iterable[pd.Timestamp]
@@ -161,36 +231,6 @@ class BookKeeperDataOps:
         group["page_current"] = group["page_current"].interpolate(method="ffill")
         return group
 
-    def _fill_up_dataframe(self, books_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Fill up the dataframe with missing rows.
-
-        Not all books are kept in all days but for some operations
-        we need the dataframe in a format like that.
-        For each date
-
-        :param books_df: the dataframe to fill up
-        :type df: pd.DataFrame
-
-        :return: the dataframe filled up
-        :rtype: pd.DataFrame
-        """
-        df_list: pd.DataFrame = []
-        df_dates = books_df["current_date"].sort_values().unique()
-        for book in books_df["slug"].unique():
-            try:
-                escaped_book = book.replace("'", "''")
-                query = f"slug == '{escaped_book}'"
-                df_list.append(
-                    self.fill_up_book_df(
-                        book_df=books_df.query(query).copy(), df_dates=df_dates
-                    )
-                )
-            except Exception as e:  # noqa: B902
-                print(e)
-
-        return pd.concat(df_list, axis=0)
-
     def get_earliest_log_per_book(books_df: pd.DataFrame) -> pd.DataFrame:
         """
         Get the earliest log per book.
@@ -222,6 +262,28 @@ class BookKeeperDataOps:
         ] = BookState.FINISHED.value
 
         return latest_books_df
+
+    def show_books_overview(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Show an overview of the books.
+
+        Return only subset of columns.
+
+        :param df: the dataframe to show the overview for
+        :type df: pd.DataFrame
+
+        :return: the dataframe with the overview
+        :rtype: pd.DataFrame
+        """
+        return df[["author", "title", "publisher", "published_year", "page_n"]].rename(
+            columns={
+                "author": "Author",
+                "title": "Book Title",
+                "publisher": "Publishing Company",
+                "published_year": "Published Year",
+                "page_n": "Number of Pages",
+            }
+        )
 
 
 class BookKeeperIO:

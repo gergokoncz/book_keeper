@@ -1,6 +1,10 @@
 data "aws_caller_identity" "current" {}
 
-# define user
+##############################################
+# -----------------  S3  ---------------------
+##############################################
+
+# users
 resource "aws_iam_user" "book_keeper_user" {
     name = "book_keeper_user"
     tags = {
@@ -8,7 +12,7 @@ resource "aws_iam_user" "book_keeper_user" {
     }
 }
 
-# define role
+# roles
 resource "aws_iam_role" "book_keeper_store_role" {
     name = "book_keeper_store_role"
 
@@ -31,7 +35,7 @@ EOF
     }
 }
 
-## s3 policy
+# s3 policies
 
 resource "aws_iam_policy" "book_keeper_store_policy" {
     name        = "book-keeper-store-policy"
@@ -86,6 +90,7 @@ EOF
     }
 }
 
+# policy attachments
 resource "aws_iam_policy_attachment" "s3_admin_policy_attachment" {
     name        = "s3_admin_policy_attachment"
     roles       = [aws_iam_role.book_keeper_store_role.name]
@@ -97,7 +102,9 @@ resource "aws_iam_user_policy_attachment" "book_keeper_s3_policy_attachment" {
     policy_arn = aws_iam_policy.book_keeper_store_policy.arn
 }
 
-## athena policy
+##############################################
+# --------------  ATHENA  --------------------
+##############################################
 
 resource "aws_iam_policy" "athena_query_execution_policy" {
   name        = "athena-query-execution-policy"
