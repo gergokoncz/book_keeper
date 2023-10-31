@@ -103,6 +103,7 @@ class BookKeeperDataOps:
         s_author: str,
         s_published_year_min: int,
         s_published_year_max: int,
+        s_publisher: str,
     ) -> pd.DataFrame:
         """
         Filter the books by given properties.
@@ -115,13 +116,18 @@ class BookKeeperDataOps:
         :type s_published_year_min: int
         :param s_published_year_max: the max published year to filter by
         :type s_published_year_max: int
+        :param s_publisher: the publisher to filter by
+        :type s_publisher: str
 
         :return: the filtered dataframe
         :rtype: pd.DataFrame
         """
         filtered_df = latest_book_state_df
         if s_author:
+            print(s_author)
             filtered_df = filtered_df.query("author==@s_author")
+        if s_publisher:
+            filtered_df = filtered_df.query("publisher==@s_publisher")
         if s_published_year_min:
             filtered_df = filtered_df.query("published_year>=@s_published_year_min")
         if s_published_year_max:

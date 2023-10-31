@@ -95,6 +95,11 @@ def main() -> None:
                 "Select author", not_deleted_books_latest_state["author"].unique()
             )
 
+            selected_publisher = st.multiselect(
+                "Select publisher",
+                not_deleted_books_latest_state["publisher"].unique(),
+            )
+
         with col2:
             min_published_year: int = not_deleted_books_latest_state[
                 "published_year"
@@ -104,14 +109,14 @@ def main() -> None:
             ].max()
 
             selected_min_published_year = st.number_input(
-                "Min published year",
+                "Minimum published year",
                 min_published_year,
                 max_published_year,
                 min_published_year,
             )
 
             selected_max_published_year = st.number_input(
-                "Max published year",
+                "Maximum published year",
                 min_published_year,
                 max_published_year,
                 max_published_year,
@@ -122,6 +127,7 @@ def main() -> None:
             selected_author,
             selected_min_published_year,
             selected_max_published_year,
+            selected_publisher,
         )
         st.markdown("Books matching filters")
         st.write(bk_data_ops.show_books_overview(filtered_books))
