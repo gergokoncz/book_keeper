@@ -124,7 +124,7 @@ def main() -> None:
             selected_max_published_year,
         )
         st.markdown("Books matching filters")
-        st.write(filtered_books)
+        st.write(bk_data_ops.show_books_overview(filtered_books))
 
         # filter by published year
 

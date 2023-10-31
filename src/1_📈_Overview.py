@@ -9,9 +9,6 @@ Showing some basic statistics of the books that you have logged.
 from os import environ
 
 import altair as alt
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
 import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
@@ -90,6 +87,9 @@ def main() -> None:
         in_progress_books["progress_perc"] = in_progress_books.apply(
             lambda x: round(x["page_current"] / x["page_n"] * 100, 2), axis=1
         )
+        st.write(in_progress_books)
+
+        in_progress_book_titles = in_progress_books["slug"].tolist()  # noqa: F841
 
         cols = st.columns(in_progress_books.shape[0])
         col_counter = 0
@@ -125,8 +125,31 @@ def main() -> None:
             .agg({"page_current": "sum"})
             .reset_index()
         )
-        # plot = sns.lineplot(data=summed_pages, x="current_date", y="page_current")
-        # st.pyplot(plot.figure)
+
+        filled_up_currently_reading = filled_up_df.query(
+            "slug in @in_progress_book_titles"
+        )
+
+        ## PLOTS
+
+        fig_currently_reading = (
+            alt.Chart(
+                filled_up_currently_reading,
+                title="Pages read over time - books in progress",
+            )
+            .mark_line(opacity=0.8, size=6)
+            .encode(
+                x=alt.X("current_date", title="date"),
+                y=alt.Y("page_current", title="pages read"),
+                color=alt.Color(
+                    "slug",
+                    scale=alt.Scale(scheme="accent"),
+                    legend=alt.Legend(
+                        orient="top-left", columns=2, symbolType="stroke"
+                    ),
+                ),
+            )
+        )
 
         fig_read_pages = (
             alt.Chart(summed_pages, title="Pages read over time")
@@ -173,6 +196,7 @@ def main() -> None:
                 color=alt.Color("state", scale=alt.Scale(scheme="accent")),
             )
         )
+        st.altair_chart(fig_currently_reading, use_container_width=True)
         chart_col1, chart_col2 = st.columns(2)
         with chart_col1:
             st.altair_chart(fig_read_pages, use_container_width=True)

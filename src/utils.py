@@ -14,6 +14,7 @@ import awswrangler as wr
 import boto3
 import pandas as pd
 import requests
+import streamlit as st
 import yaml
 from yaml.loader import SafeLoader
 
@@ -255,6 +256,28 @@ class BookKeeperDataOps:
         ] = BookState.FINISHED.value
 
         return latest_books_df
+
+    def show_books_overview(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Show an overview of the books.
+
+        Return only subset of columns.
+
+        :param df: the dataframe to show the overview for
+        :type df: pd.DataFrame
+
+        :return: the dataframe with the overview
+        :rtype: pd.DataFrame
+        """
+        return df[["author", "title", "publisher", "published_year", "page_n"]].rename(
+            columns={
+                "author": "Author",
+                "title": "Book Title",
+                "publisher": "Publishing Company",
+                "published_year": "Published Year",
+                "page_n": "Number of Pages",
+            }
+        )
 
 
 class BookKeeperIO:
