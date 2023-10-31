@@ -87,7 +87,6 @@ def main() -> None:
         in_progress_books["progress_perc"] = in_progress_books.apply(
             lambda x: round(x["page_current"] / x["page_n"] * 100, 2), axis=1
         )
-        st.write(in_progress_books)
 
         in_progress_book_titles = in_progress_books["slug"].tolist()  # noqa: F841
 
