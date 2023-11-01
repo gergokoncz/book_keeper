@@ -179,6 +179,25 @@ class BookKeeperDataOps:
 
         return pd.concat([pd.DataFrame(rows_to_add), book_df], axis=0)
 
+    def backdate_books(self, books_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Backdate the books.
+
+        When book logs are older than the time they were finished.
+        This can happen when the user forgets to log the book for a while.
+
+        :param books_df: the dataframe to backdate
+        :type books_df: pd.DataFrame
+
+        :return: the dataframe backdated
+        :rtype: pd.DataFrame
+        """
+        books_df = self.add_books_state(books_df)
+        finished_books_df = books_df.query("state=='finished'").copy()
+        finished_books_df = finished_books_df.query("current_date > finish_date")
+        finished_books_df["current_date"] = finished_books_df["finish_date"]
+        return finished_books_df
+
     def fill_up_dataframe(self, books_df: pd.DataFrame) -> pd.DataFrame:
         """
         Fill up the dataframe with missing rows.
@@ -193,6 +212,8 @@ class BookKeeperDataOps:
         :return: the dataframe filled up
         :rtype: pd.DataFrame
         """
+        backdated_books_df = self.backdate_books(books_df.copy())
+        books_df = pd.concat([books_df, backdated_books_df], axis=0)
         # sort df by slug and date
         books_df.sort_values(by=["slug", "current_date"], inplace=True)
 
@@ -242,6 +263,21 @@ class BookKeeperDataOps:
         :rtype: pd.DataFrame
         """
         return books_df.groupby("slug").agg({"current_date": "min"}).reset_index()
+
+    def get_earliest_log_for_books(
+        self, slugs: list[str], books_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Get the earliest log for given books.
+
+        Earliest that is present for any of the books.
+        :param slugs: the slugs of the books to get the earliest log for
+        :type slugs: list[str]
+        :param books_df: the dataframe to get the earliest log from
+        :type books_df: pd.DataFrame
+        """
+        filtered_df = books_df.query("slug in @slugs")
+        return filtered_df["current_date"].min()
 
     def add_books_state(self, latest_books_df: pd.DataFrame) -> pd.DataFrame:
         """

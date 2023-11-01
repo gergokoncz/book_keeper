@@ -9,6 +9,7 @@ Showing some basic statistics of the books that you have logged.
 from os import environ
 
 import altair as alt
+import pandas as pd
 import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
@@ -57,6 +58,8 @@ def main() -> None:
 
         authenticator.logout("Logout", "sidebar")
 
+        # GET DATA
+
         with st.spinner("Your books are loading..."):
 
             if "bk" not in st.session_state:
@@ -72,50 +75,26 @@ def main() -> None:
                     st.session_state.latest_book_state_df,
                 ) = st.session_state.bk.update_tables()
 
+        # DATA OPERATIONS
+
         bkdata = BookKeeperDataOps()
-        latest_books_df = bkdata.add_books_state(
+        latest_books_with_state_df = bkdata.add_books_state(
             st.session_state.bk.remove_deleted_books(
                 st.session_state.latest_book_state_df
             )
         )
-        # st.write(latest_books_df)
-
-        st.write("## Books currently in progress")
 
         ## BOOKS currently in progress
-        in_progress_books = latest_books_df.query("state == 'in progress'")
+        in_progress_books = latest_books_with_state_df.query("state == 'in progress'")
         in_progress_books["progress_perc"] = in_progress_books.apply(
             lambda x: round(x["page_current"] / x["page_n"] * 100, 2), axis=1
         )
 
         in_progress_book_titles = in_progress_books["slug"].tolist()  # noqa: F841
 
-        cols = st.columns(in_progress_books.shape[0])
-        col_counter = 0
-        for _, book in in_progress_books.iterrows():
-            with cols[col_counter]:
-                # st.write(f"{book['title']} - {book['progress_perc']}%")
-                st.metric(label=f"{book['title']} (%)", value=book["progress_perc"])
-            col_counter += 1
-
-        # fig_in_progress = (
-        #     alt.Chart(in_progress_books)
-        #     .mark_bar(opacity=0.6, color="#f5bf42", size=20)
-        #     .encode(
-        #         x=alt.X("title", title="book title"),
-        #         y=alt.Y(
-        #             "progress_perc",
-        #             title="percentage",
-        #             scale=alt.Scale(domain=[0, 100]),
-        #         ),
-        #     )
-        #     .properties(title="Books currently in progress")
-        # )
-
-        # st.altair_chart(fig_in_progress, use_container_width=True)
-
-        ## Show reading statistics
-        st.divider()
+        earliest_log_date_current = bkdata.get_earliest_log_for_books(  # noqa: F841
+            slugs=in_progress_book_titles, books_df=st.session_state.books_df
+        ) - pd.DateOffset(days=3)
 
         filled_up_df = bkdata.fill_up_dataframe(st.session_state.books_df)
 
@@ -126,8 +105,20 @@ def main() -> None:
         )
 
         filled_up_currently_reading = filled_up_df.query(
-            "slug in @in_progress_book_titles"
+            "slug in @in_progress_book_titles and current_date >= @earliest_log_date_current"
         )
+
+        st.write("## Books currently in progress")
+
+        cols = st.columns(in_progress_books.shape[0])
+        col_counter = 0
+        for _, book in in_progress_books.iterrows():
+            with cols[col_counter]:
+                st.metric(label=f"{book['title']} (%)", value=book["progress_perc"])
+            col_counter += 1
+
+        ## Show reading statistics
+        st.divider()
 
         ## PLOTS
 
@@ -143,24 +134,39 @@ def main() -> None:
                 color=alt.Color(
                     "slug",
                     scale=alt.Scale(scheme="accent"),
-                    legend=alt.Legend(
-                        orient="top-left", columns=2, symbolType="stroke"
-                    ),
+                    legend=alt.Legend(orient="top", columns=5, symbolType="stroke"),
                 ),
             )
         )
 
-        fig_read_pages = (
+        summed_pages["smoothed_page_current"] = (
+            summed_pages["page_current"].ewm(span=20).mean()
+        )
+        st.write(summed_pages)
+
+        fig_read_pages_all = (
             alt.Chart(summed_pages, title="Pages read over time")
-            .mark_line(opacity=0.8, color="#f5bf42", size=6)
+            .mark_line(opacity=0.8, color="#f5bf42", size=4)
             .encode(
                 x=alt.X("current_date", title="date"),
-                y=alt.Y("page_current", title="pages read"),
+                y=alt.Y("smoothed_page_current", title="pages read"),
             )
         )
 
+        # three_month_ago = pd.to_datetime("today") - pd.DateOffset(months=3) # noqa: F841
+        # last_three_month_df = summed_pages.query("current_date > @three_month_ago")
+        # fig_read_pages_last_3_months = (
+        #     alt.Chart(last_three_month_df, title="Pages read over time")
+        #     .mark_line(opacity=0.8, color="#f5bf42", size=4)
+        #     .encode(
+        #         x=alt.X("current_date", title="date"),
+        #         y=alt.Y("page_current", title="pages read"),
+        #     )
+        # )
         fig_books_ratio = (
-            alt.Chart(latest_books_df, title="Books by current state of progress")
+            alt.Chart(
+                latest_books_with_state_df, title="Books by current state of progress"
+            )
             .mark_arc(opacity=0.8)
             .encode(
                 color=alt.Color("state", scale=alt.Scale(scheme="accent")),
@@ -170,7 +176,7 @@ def main() -> None:
 
         fig_books_by_published_date = (
             alt.Chart(
-                latest_books_df.query("published_year > 0"),
+                latest_books_with_state_df.query("published_year > 0"),
                 title="Books by published year",
             )
             .mark_bar(opacity=0.7, color="#f5bf42", size=8)
@@ -183,7 +189,7 @@ def main() -> None:
         )
         fig_books_by_published_date_recent = (
             alt.Chart(
-                latest_books_df.query("published_year > 2000"),
+                latest_books_with_state_df.query("published_year > 2000"),
                 title="Books by published year and current state of progress (recent)",
             )
             .mark_bar(opacity=0.8, color="#f5bf42", size=6)
@@ -198,10 +204,11 @@ def main() -> None:
         st.altair_chart(fig_currently_reading, use_container_width=True)
         chart_col1, chart_col2 = st.columns(2)
         with chart_col1:
-            st.altair_chart(fig_read_pages, use_container_width=True)
+            st.altair_chart(fig_read_pages_all, use_container_width=True)
             st.altair_chart(fig_books_by_published_date, use_container_width=True)
 
         with chart_col2:
+            # st.altair_chart(fig_read_pages_last_3_months, use_container_width=True)
             st.altair_chart(fig_books_ratio, use_container_width=True)
             st.altair_chart(
                 fig_books_by_published_date_recent, use_container_width=True
