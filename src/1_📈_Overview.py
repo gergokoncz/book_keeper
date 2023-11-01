@@ -6,6 +6,8 @@ This is the entry point for BookKeeper app.
 Showing some basic statistics of the books that you have logged.
 """
 
+import math
+from datetime import datetime, timedelta
 from os import environ
 
 import altair as alt
@@ -19,6 +21,8 @@ from utils import AuthIO, BookKeeperDataOps, BookKeeperIO, load_lottie_url
 # GLOBALS
 lottie_asset_url = "https://assets3.lottiefiles.com/packages/lf20_4XmSkB.json"
 custom_color_scheme = ["#FF5733", "#33FF57", "#5733FF", "#FFFF33", "#33FFFF"]
+
+two_weeks_ago = datetime.today() - timedelta(days=14)
 
 
 def main() -> None:
@@ -110,12 +114,35 @@ def main() -> None:
 
         st.write("## Books currently in progress")
 
-        cols = st.columns(in_progress_books.shape[0])
-        col_counter = 0
-        for _, book in in_progress_books.iterrows():
-            with cols[col_counter]:
-                st.metric(label=f"{book['title']} (%)", value=book["progress_perc"])
-            col_counter += 1
+        col_counter = 4
+        row_counter = math.ceil(in_progress_books.shape[0] / col_counter)
+        cols = st.columns(col_counter)
+
+        for row in range(row_counter):
+            for col in range(col_counter):
+                if row * col_counter + col >= in_progress_books.shape[0]:
+                    break
+                book = in_progress_books.iloc[row * col_counter + col]
+                two_weeks_ago_pagecount_log = (
+                    bkdata.get_closest_date_pagecount_for_book(
+                        filled_up_currently_reading, book["slug"], date=two_weeks_ago
+                    )
+                )
+                with cols[col]:
+                    metric_delta = round(
+                        book["progress_perc"]
+                        - (
+                            two_weeks_ago_pagecount_log["page_current"]
+                            / book["page_n"]
+                            * 100
+                        ),
+                        2,
+                    )
+                    st.metric(
+                        label=f"{book['title']}",
+                        value=f"{book['progress_perc']} %",
+                        delta=f"{metric_delta} %",
+                    )
 
         ## Show reading statistics
         st.divider()
@@ -142,7 +169,6 @@ def main() -> None:
         summed_pages["smoothed_page_current"] = (
             summed_pages["page_current"].ewm(span=20).mean()
         )
-        st.write(summed_pages)
 
         fig_read_pages_all = (
             alt.Chart(summed_pages, title="Pages read over time")
