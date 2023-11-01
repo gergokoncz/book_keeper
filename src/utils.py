@@ -148,6 +148,24 @@ class BookKeeperDataOps:
         """
         return books_df.query(f"slug=='{slug}'")
 
+    def get_closest_date_pagecount_for_book(
+        self, books_df: pd.DataFrame, slug: str, date: pd.Timestamp
+    ) -> pd.DataFrame:
+        """
+        Get the logs for a given book.
+
+        :param slug: the slug of the book to get the logs for
+        :type slug: str
+        :param books_df: the dataframe to get the logs from
+        :type books_df: pd.DataFrame
+
+        :return: the logs for the given book
+        :rtype: pd.DataFrame
+        """
+        logs_for_book = self.get_logs_for_book(books_df, slug)
+        sorted_logs = logs_for_book.sort_values(by="current_date", ascending=True)
+        return sorted_logs.iloc[sorted_logs["current_date"].searchsorted(date)]
+
     def fill_up_book_df(
         self, book_df: pd.DataFrame, df_dates: Iterable[pd.Timestamp]
     ) -> pd.DataFrame:
