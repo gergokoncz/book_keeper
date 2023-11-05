@@ -14,7 +14,7 @@ from .conftest import TEST_BUCKET_NAME, TEST_REGION, TEST_USERNAME
 @fixture
 def test_auth_config():
     """Return a test auth config."""
-    with open("tests/test_auth_config.yaml", "r") as f:
+    with open("src/tests/test_auth_config.yaml", "r") as f:
         return yaml.load(f, Loader=SafeLoader)
 
 
