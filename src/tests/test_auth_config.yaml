@@ -1,0 +1,16 @@
+credentials:
+  usernames:
+    tester1:
+      email: tester1@gmail.com
+      name: Tester NumeroUno
+      password: abc
+    tester2:
+      email: tester2@gmail.com
+      name: Tester Nummer2
+      password: def
+cookie:
+  expiry_days: 1
+  key: tester_key
+  name: tester_cookie_name
+preauthorized:
+  emails:
