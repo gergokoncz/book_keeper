@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""Utility class with some example data in it."""
 
 import pandas as pd
 

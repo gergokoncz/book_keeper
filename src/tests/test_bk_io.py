@@ -9,16 +9,15 @@ import pytest
 from src.tests.conftest import TEST_BUCKET_NAME, TEST_REGION, TEST_USERNAME
 from src.utils import BookKeeperIO
 
-
-@pytest.fixture(autouse=True)
-def before_and_after_test():
-    """Fixture to run before and after each test."""
-    # Run before test
-    yield
-    # Run after test
-    s3 = boto3.resource("s3", region_name=TEST_REGION)
-    bucket = s3.Bucket(TEST_BUCKET_NAME)
-    bucket.objects.all().delete()
+# @pytest.fixture(autouse=True)
+# def before_and_after_test():
+#     """Fixture to run before and after each test."""
+#     # Run before test
+#     yield
+#     # Run after test
+#     s3 = boto3.resource("s3", region_name=TEST_REGION)
+#     bucket = s3.Bucket(TEST_BUCKET_NAME)
+#     bucket.objects.all().delete()
 
 
 @pytest.fixture
