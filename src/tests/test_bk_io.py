@@ -9,15 +9,16 @@ import pytest
 from src.tests.conftest import TEST_BUCKET_NAME, TEST_REGION, TEST_USERNAME
 from src.utils import BookKeeperIO
 
-# @pytest.fixture(autouse=True)
-# def before_and_after_test():
-#     """Fixture to run before and after each test."""
-#     # Run before test
-#     yield
-#     # Run after test
-#     s3 = boto3.resource("s3", region_name=TEST_REGION)
-#     bucket = s3.Bucket(TEST_BUCKET_NAME)
-#     bucket.objects.all().delete()
+
+@pytest.fixture(autouse=True)
+def before_and_after_test():
+    """Fixture to run before and after each test."""
+    # Run before test
+    yield
+    # Run after test
+    s3 = boto3.resource("s3", region_name=TEST_REGION)
+    bucket = s3.Bucket(TEST_BUCKET_NAME)
+    bucket.objects.all().delete()
 
 
 @pytest.fixture
@@ -41,6 +42,32 @@ def test_constructor_missing_args():
 
 
 # test create_slug
+
+
+def test_create_slug_basic(bookkeeper_io):
+    """Test the create_slug method of the BookKeeperIO class."""
+    book = {
+        "title": "Test Book",
+        "author": "Test Author",
+    }
+
+    slug = bookkeeper_io.create_slug(book)
+
+    assert isinstance(slug, str)
+    assert slug == "testauthor-testbook"
+
+
+def test_create_slug_special_chars(bookkeeper_io):
+    """Test the create_slug method with special characters."""
+    book = {
+        "title": "A& B: C",
+        "author": "!@#$%^",
+    }
+    slug = bookkeeper_io.create_slug(book)
+
+    assert isinstance(slug, str)
+    assert slug == "-abc"
+
 
 # test _append_book_to_df
 

@@ -5,8 +5,9 @@ BookKeeper data IO focused module of the app.
 
 With classes and functions related to CRUD operations on the data.
 """
+import re
 import time
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 
 import awswrangler as wr
 import boto3
@@ -86,12 +87,9 @@ class BookKeeperIO:
         :return: the slug of the book
         :rtype: str
         """
-        return "-".join(
-            [
-                book["author"].replace(".", "").replace(" ", "-"),
-                book["title"].replace(".", "").replace(" ", "-"),
-            ]
-        ).lower()
+        author = re.sub(r"[^a-zA-Z0-9 ]", "", book["author"]).replace(" ", "").lower()
+        title = re.sub(r"[^a-zA-Z0-9 ]", "", book["title"]).replace(" ", "").lower()
+        return f"{author}-{title}"
 
     def _append_book_to_df(
         self,
