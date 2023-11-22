@@ -54,29 +54,6 @@ class BookKeeperIO:
         }
 
     @staticmethod
-    def _poll_for_athena_query(query_execution_id: str) -> str:
-        """
-        Poll for the status of the Athena query.
-
-        Response can be
-        QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED
-
-        :param query_execution_id: the id of the query execution
-        :type query_execution_id: str
-
-        :return: the status of the query
-        :rtype: str
-        """
-        while True:
-            time.sleep(1)
-            response = athena_client.get_query_execution(
-                QueryExecutionId=query_execution_id
-            )
-            status = response["QueryExecution"]["Status"]["State"]
-            if status in ["SUCCEEDED", "FAILED", "CANCELLED"]:
-                return status
-
-    @staticmethod
     def create_slug(book: dict[str, Any]) -> str:
         """
         Create a slug for the book.
@@ -87,8 +64,10 @@ class BookKeeperIO:
         :return: the slug of the book
         :rtype: str
         """
-        author = re.sub(r"[^a-zA-Z0-9 ]", "", book["author"]).replace(" ", "").lower()
-        title = re.sub(r"[^a-zA-Z0-9 ]", "", book["title"]).replace(" ", "").lower()
+        author = (
+            re.sub(r"[^a-zA-Z0-9\s-]", "", book["author"]).replace(" ", "-").lower()
+        )
+        title = re.sub(r"[^a-zA-Z0-9\s-]", "", book["title"]).replace(" ", "-").lower()
         return f"{author}-{title}"
 
     def _append_book_to_df(

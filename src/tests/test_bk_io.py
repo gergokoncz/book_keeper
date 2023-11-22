@@ -54,7 +54,7 @@ def test_create_slug_basic(bookkeeper_io):
     slug = bookkeeper_io.create_slug(book)
 
     assert isinstance(slug, str)
-    assert slug == "testauthor-testbook"
+    assert slug == "test-author-test-book"
 
 
 def test_create_slug_special_chars(bookkeeper_io):
@@ -66,7 +66,31 @@ def test_create_slug_special_chars(bookkeeper_io):
     slug = bookkeeper_io.create_slug(book)
 
     assert isinstance(slug, str)
-    assert slug == "-abc"
+    assert slug == "-a-b-c"
+
+
+def test_create_slug_with_hyphens(bookkeeper_io):
+    """Test the create_slug method with hyphens."""
+    book = {
+        "title": "The-Hobbit",
+        "author": "J.R.R.-Tolkien",
+    }
+    slug = bookkeeper_io.create_slug(book)
+
+    assert isinstance(slug, str)
+    assert slug == "jrr-tolkien-the-hobbit"
+
+
+def test_create_slug_empty_fields(bookkeeper_io):
+    """Test the create_slug method with empty fields."""
+    book = {
+        "title": "",
+        "author": "",
+    }
+    slug = bookkeeper_io.create_slug(book)
+
+    assert isinstance(slug, str)
+    assert slug == "-"
 
 
 # test _append_book_to_df
