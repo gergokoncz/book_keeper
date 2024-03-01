@@ -75,7 +75,6 @@ class BookKeeperDataOps:
         """
         filtered_df = latest_book_state_df
         if s_author:
-            print(s_author)
             filtered_df = filtered_df.query("author==@s_author")
         if s_publisher:
             filtered_df = filtered_df.query("publisher==@s_publisher")
@@ -114,8 +113,8 @@ class BookKeeperDataOps:
         :rtype: pd.DataFrame
         """
         logs_for_book = self.get_logs_for_book(books_df, slug)
-        sorted_logs = logs_for_book.sort_values(by="current_date", ascending=True)
-        return sorted_logs.iloc[sorted_logs["current_date"].searchsorted(date)]
+        sorted_logs = logs_for_book.sort_values(by="log_created_at", ascending=True)
+        return sorted_logs.iloc[sorted_logs["log_created_at"].searchsorted(date)]
 
     def fill_up_book_df(
         self, book_df: pd.DataFrame, df_dates: Iterable[pd.Timestamp]
@@ -133,17 +132,17 @@ class BookKeeperDataOps:
         """
         latest_log: pd.DataFrame
         rows_to_add: list[pd.DataFrame] = []
-        first_log_date = book_df["current_date"].min()
+        first_log_date = book_df["log_created_at"].min()
 
         for date in (d for d in df_dates if d >= first_log_date):
-            row_for_date = book_df.query(f"current_date == '{date}'")
+            row_for_date = book_df.query(f"log_created_at == '{date}'")
 
             if row_for_date.shape[0] > 0:
                 latest_log = row_for_date.iloc[0]
 
             else:
                 new_row = latest_log.copy()
-                new_row["current_date"] = date
+                new_row["log_created_at"] = date
                 rows_to_add.append(new_row)
 
         return pd.concat([pd.DataFrame(rows_to_add), book_df], axis=0)
@@ -163,8 +162,8 @@ class BookKeeperDataOps:
         """
         books_df = self.add_books_state(books_df)
         finished_books_df = books_df.query("state=='finished'").copy()
-        finished_books_df = finished_books_df.query("current_date > finish_date")
-        finished_books_df["current_date"] = finished_books_df["finish_date"]
+        finished_books_df = finished_books_df.query("log_created_at > finish_date")
+        finished_books_df["log_created_at"] = finished_books_df["finish_date"]
         return finished_books_df
 
     def fill_up_dataframe(self, books_df: pd.DataFrame) -> pd.DataFrame:
@@ -183,28 +182,29 @@ class BookKeeperDataOps:
         """
         backdated_books_df = self.backdate_books(books_df.copy())
         books_df = pd.concat([books_df, backdated_books_df], axis=0)
+        books_df["log_created_at"] = pd.to_datetime(books_df["log_created_at"])
         # sort df by slug and date
-        books_df.sort_values(by=["slug", "current_date"], inplace=True)
+        books_df.sort_values(by=["slug", "log_created_at"], inplace=True)
 
         # create new df with all unique dates
         unique_dates = pd.date_range(
-            books_df["current_date"].min(), books_df["current_date"].max(), freq="D"
+            books_df["log_created_at"].min(), books_df["log_created_at"].max(), freq="D"
         )
 
         # cross join unique dates with unique slugs
         unique_slugs = books_df["slug"].unique()
         cartesian_product = pd.MultiIndex.from_product(
-            [unique_slugs, unique_dates], names=["slug", "current_date"]
+            [unique_slugs, unique_dates], names=["slug", "log_created_at"]
         )
         cross_join_df = pd.DataFrame(index=cartesian_product).reset_index()
 
         # merge cross join with books_df
         result_df = cross_join_df.merge(
-            books_df, how="left", on=["slug", "current_date"]
+            books_df, how="left", on=["slug", "log_created_at"]
         )
 
         # sort and reset the index of the result df
-        result_df.sort_values(by=["slug", "current_date"], inplace=True)
+        result_df.sort_values(by=["slug", "log_created_at"], inplace=True)
         result_df.reset_index(drop=True, inplace=True)
 
         # interpolate the missing values
@@ -231,7 +231,7 @@ class BookKeeperDataOps:
         :return: the earliest log per book
         :rtype: pd.DataFrame
         """
-        return books_df.groupby("slug").agg({"current_date": "min"}).reset_index()
+        return books_df.groupby("slug").agg({"log_created_at": "min"}).reset_index()
 
     def get_earliest_log_for_books(
         self, slugs: list[str], books_df: pd.DataFrame
@@ -246,7 +246,7 @@ class BookKeeperDataOps:
         :type books_df: pd.DataFrame
         """
         filtered_df = books_df.query("slug in @slugs")
-        return filtered_df["current_date"].min()
+        return filtered_df["log_created_at"].min()
 
     def add_books_state(self, latest_books_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -259,12 +259,12 @@ class BookKeeperDataOps:
         :rtype: pd.DataFrame
         """
         latest_books_df.loc[:, "state"] = BookState.NOT_STARTED.value
-        latest_books_df.loc[
-            latest_books_df["page_current"] > 0, "state"
-        ] = BookState.IN_PROGRESS.value
-        latest_books_df.loc[
-            ~pd.isnull(latest_books_df["finish_date"]), "state"
-        ] = BookState.FINISHED.value
+        latest_books_df.loc[latest_books_df["page_current"] > 0, "state"] = (
+            BookState.IN_PROGRESS.value
+        )
+        latest_books_df.loc[~pd.isnull(latest_books_df["finish_date"]), "state"] = (
+            BookState.FINISHED.value
+        )
 
         return latest_books_df
 

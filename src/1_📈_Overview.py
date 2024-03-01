@@ -59,13 +59,11 @@ def main() -> None:
     # Present content based on authentication status
     ## If user is authenticated, show the app
     if st.session_state["authentication_status"]:
-
         authenticator.logout("Logout", "sidebar")
 
         # GET DATA
 
         with st.spinner("Your books are loading..."):
-
             if "bk" not in st.session_state:
                 st.session_state.bk = BookKeeperIO(
                     st.session_state["username"], bucket=bucket
@@ -103,13 +101,13 @@ def main() -> None:
         filled_up_df = bkdata.fill_up_dataframe(st.session_state.books_df)
 
         summed_pages = (
-            filled_up_df.groupby("current_date")
+            filled_up_df.groupby("log_created_at")
             .agg({"page_current": "sum"})
             .reset_index()
         )
 
         filled_up_currently_reading = filled_up_df.query(
-            "slug in @in_progress_book_titles and current_date >= @earliest_log_date_current"
+            "slug in @in_progress_book_titles and log_created_at >= @earliest_log_date_current"
         )
 
         st.write("## Books currently in progress")
@@ -156,7 +154,7 @@ def main() -> None:
             )
             .mark_line(opacity=0.8, size=6)
             .encode(
-                x=alt.X("current_date", title="date"),
+                x=alt.X("log_created_at", title="date"),
                 y=alt.Y("page_current", title="pages read"),
                 color=alt.Color(
                     "slug",
@@ -174,7 +172,7 @@ def main() -> None:
             alt.Chart(summed_pages, title="Pages read over time")
             .mark_line(opacity=0.8, color="#f5bf42", size=4)
             .encode(
-                x=alt.X("current_date", title="date"),
+                x=alt.X("log_created_at", title="date"),
                 y=alt.Y("smoothed_page_current", title="pages read"),
             )
         )
@@ -185,7 +183,7 @@ def main() -> None:
         #     alt.Chart(last_three_month_df, title="Pages read over time")
         #     .mark_line(opacity=0.8, color="#f5bf42", size=4)
         #     .encode(
-        #         x=alt.X("current_date", title="date"),
+        #         x=alt.X("log_created_at", title="date"),
         #         y=alt.Y("page_current", title="pages read"),
         #     )
         # )

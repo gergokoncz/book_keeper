@@ -61,7 +61,6 @@ def main() -> None:
         authenticator.logout("Logout", "sidebar")
 
         with st.spinner("Your books are loading..."):
-
             if "bk" not in st.session_state:
                 bucket = environ.get("BOOKSTORAGE_BUCKET")
                 st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
@@ -90,7 +89,6 @@ def main() -> None:
         col1, col2, col3 = st.columns(3)
 
         with col1:
-
             selected_author = st.multiselect(
                 "Select author", not_deleted_books_latest_state["author"].unique()
             )
@@ -147,7 +145,7 @@ def main() -> None:
         selected_book_df = bk_data_ops.get_logs_for_book(
             st.session_state.books_df, selected_slug
         )
-        st.write(selected_book_df.sort_values("current_date", ascending=True))
+        st.write(selected_book_df.sort_values("log_created_at", ascending=True))
 
     ## If user gave wrong credentials
     elif st.session_state["authentication_status"] is False:
