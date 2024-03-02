@@ -31,6 +31,7 @@ from .example_data import EXAMPLE_DATA
 host = environ.get("PG_HOST")
 user = environ.get("PG_USER")
 password = environ.get("PG_PASSWORD")
+schema = environ.get("PG_SCHEMA")
 
 engine = create_engine(f"postgresql://{user}:{password}@{host}:5432/admin_db")
 
@@ -51,7 +52,7 @@ class BookKeeperIO:
         self.bucket = bucket
 
         self.sql_engine = engine
-        self.schema = "bookkeeper_prod"
+        self.schema = schema
         self.metadata = MetaData()
         self.metadata.reflect(bind=self.sql_engine, schema=self.schema)
 
