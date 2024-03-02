@@ -58,7 +58,6 @@ def main() -> None:
     if st.session_state["authentication_status"]:
         authenticator.logout("Logout", "sidebar")
         with st.spinner("Your books are loading..."):
-
             if "bk" not in st.session_state:
                 bucket = environ.get("BOOKSTORAGE_BUCKET")
                 st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
@@ -149,7 +148,7 @@ def main() -> None:
                 "published_year": published_year,
                 "page_n": book_pageN,
                 "page_current": book_pageCurrent,
-                "current_date": pd.Timestamp.today(),
+                "log_created_at": pd.Timestamp.today(),
                 "finish_date": finish_date,
                 "tag1": book_tag1,
                 "tag2": book_tag2,

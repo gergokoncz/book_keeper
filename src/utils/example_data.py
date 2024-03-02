@@ -20,7 +20,7 @@ EXAMPLE_DATA = pd.DataFrame(
         "page_current": [62, 100, 399],
         "started": [True, True, True],
         "deleted": [False, False, False],
-        "current_date": [
+        "log_created_at": [
             pd.Timestamp("2023-06-10"),
             pd.Timestamp("2023-06-10"),
             pd.Timestamp("2023-06-10"),

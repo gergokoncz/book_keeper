@@ -16,7 +16,16 @@ A streamlit application to keep track of the books that you are reading or plan 
 
 ## Infrastructure
 
-...
+The infrastructure is written in **aws cdk** and is found in the _/test_infrastructure_ folder.
+
+I started out using **terraform** for infrastructure, but it was more painful than **cdk**. When I set up the testing infrastructure I used **cdk** and eventually I moved the production infrastructure to **cdk** as well as after creation you can't modify the stack name, it remained test_infrastructure.
+
+The infrastructure is deployed with the following command:
+
+```bash
+cd test_infrastructure
+cdk deploy
+```
 
 ## Installation
 

@@ -20,7 +20,15 @@ def before_and_after_test():
     # Run after test
     s3 = boto3.resource("s3", region_name=TEST_REGION)
     bucket = s3.Bucket(TEST_BUCKET_NAME)
-    bucket.objects.all().delete()
+    objects_to_delete = list(bucket.objects.all())
+
+    objects_to_delete = [
+        obj for obj in objects_to_delete if not obj.key.startswith("test_data")
+    ]
+
+    while objects_to_delete:
+        batch, objects_to_delete = objects_to_delete[:1000], objects_to_delete[1000:]
+        bucket.delete_objects(Delete={"Objects": [{"Key": obj.key} for obj in batch]})
 
 
 @fixture

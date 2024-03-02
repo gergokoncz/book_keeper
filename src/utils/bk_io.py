@@ -5,17 +5,35 @@ BookKeeper data IO focused module of the app.
 
 With classes and functions related to CRUD operations on the data.
 """
+
 import re
-import time
+from os import environ
 from typing import Any, Tuple
 
 import awswrangler as wr
-import boto3
 import pandas as pd
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    delete,
+    inspect,
+)
 
 from .example_data import EXAMPLE_DATA
 
-athena_client = boto3.client("athena", region_name="eu-north-1")
+# init the sql engine
+host = environ.get("PG_HOST")
+user = environ.get("PG_USER")
+password = environ.get("PG_PASSWORD")
+schema = environ.get("PG_SCHEMA")
+
+engine = create_engine(f"postgresql://{user}:{password}@{host}:5432/admin_db")
 
 
 class BookKeeperIO:
@@ -32,26 +50,13 @@ class BookKeeperIO:
         """
         self.user_id = user_id
         self.bucket = bucket
+
+        self.sql_engine = engine
+        self.schema = schema
+        self.metadata = MetaData()
+        self.metadata.reflect(bind=self.sql_engine, schema=self.schema)
+
         self.existing_book_slugs: set[str] = set()
-        self.books_table_schema = {
-            "title": "string",
-            "subtitle": "string",
-            "author": "string",
-            "location": "string",
-            "publisher": "string",
-            "published_year": "int",
-            "page_n": "int",
-            "page_current": "int",
-            "current_date": "timestamp",
-            "finish_date": "timestamp",
-            "tag1": "string",
-            "tag2": "string",
-            "tag3": "string",
-            "language": "string",
-            "slug": "string",
-            "started": "boolean",
-            "deleted": "boolean",
-        }
 
     @staticmethod
     def create_slug(book: dict[str, Any]) -> str:
@@ -69,6 +74,44 @@ class BookKeeperIO:
         )
         title = re.sub(r"[^a-zA-Z0-9\s-]", "", book["title"]).replace(" ", "-").lower()
         return f"{author}-{title}"
+
+    def create_user_table(self) -> bool:
+        """
+        Create the user's table in the database.
+
+        :return: whether the table was created or not
+        :rtype: bool
+        """
+        try:
+            _ = Table(
+                f"{self.user_id}_book_logs",
+                self.metadata,
+                Column("id", Integer, primary_key=True),
+                Column("title", String),
+                Column("subtitle", String),
+                Column("author", String),
+                Column("location", String),
+                Column("publisher", String),
+                Column("published_year", Integer),
+                Column("page_n", Integer),
+                Column("page_current", Integer),
+                Column("finish_date", Date),
+                Column("tag1", String),
+                Column("tag2", String),
+                Column("tag3", String),
+                Column("language", String),
+                Column("slug", String, index=True),
+                Column("started", Boolean),
+                Column("deleted", Boolean),
+                Column("log_created_at", Date, index=True),
+                schema=self.schema,
+            )
+            self.metadata.create_all(self.sql_engine)
+            self.metadata.reflect(bind=self.sql_engine, schema=self.schema)
+
+            return True
+        except Exception:  # noqa: B902
+            return False
 
     def _append_book_to_df(
         self,
@@ -95,7 +138,7 @@ class BookKeeperIO:
         if type(book["finish_date"]) != type(pd.to_datetime("today")):  # noqa: E721
             book["finish_date"] = pd.to_datetime(book["finish_date"])
 
-        book["current_date"] = pd.to_datetime("today").normalize()
+        book["log_created_at"] = pd.to_datetime("today").normalize()
         book["deleted"] = deleted
         book["started"] = book["page_current"] > 0
 
@@ -229,17 +272,15 @@ class BookKeeperIO:
         Get all the user's books.
 
         Including deleted books.
-        Everything that is stored in S3.
+        Everything that is stored in DB.
 
         :return: the user's books
         :rtype: pd.DataFrame
         """
-        if self.search_user_table():
-            books_df = wr.athena.read_sql_table(
-                table=f"{self.user_id}_books",
-                database="book_keeper",
-                # ctas_approach=False,
-                # unload_approach=True
+        if self.user_table_exists():
+            books_df = pd.read_sql(
+                f"SELECT * FROM {self.schema}.{self.user_id}_book_logs",
+                self.sql_engine,
             )
             self.existing_book_slugs = set(books_df["slug"].unique().tolist())
             return books_df
@@ -276,23 +317,55 @@ class BookKeeperIO:
         """
         Save the dataframe to the user's table.
 
+        Works with daily logs.
+        Drops all previous logs from that date.
+        Writes the table.
+
         :param df: the dataframe to save
         :type df: pd.DataFrame
 
         :return: whether the dataframe was saved or not
         :rtype: bool
         """
-        try:
-            wr.s3.to_parquet(
-                df=df,
-                dtype=self.books_table_schema,
-                path=f"s3://{self.bucket}/{self.user_id}/books/",
-                dataset=True,
-                database="book_keeper",
-                table=f"{self.user_id}_books",
-                mode="overwrite_partitions",
-                partition_cols=["current_date"],
+        if self.user_table_exists():
+            self.delete_table_rows_for_date(pd.Timestamp.today().normalize())
+        else:
+            self.create_user_table()
+        delete_success = self.delete_table_rows_for_date(
+            pd.Timestamp.today().normalize()
+        )
+
+        if delete_success:
+            df.to_sql(
+                f"{self.user_id}_book_logs",
+                self.sql_engine,
+                schema=self.schema,
+                if_exists="append",
+                index=False,
             )
+            return True
+        else:
+            return False
+
+    def delete_table_rows_for_date(self, date: pd.Timestamp) -> bool:
+        """
+        Delete all rows for a given date.
+
+        :param date: the date to delete the rows for
+        :type date: pd.Timestamp
+
+        :return: whether the rows were deleted or not
+        :rtype: bool
+        """
+        table_name = f"{self.schema}.{self.user_id}_book_logs"
+
+        try:
+            table = self.metadata.tables[table_name]
+            stmt = delete(table).where(table.c.log_created_at == date)
+            with self.sql_engine.connect() as conn:
+                conn.execute(stmt)
+                conn.commit()
+
             return True
         except Exception:  # noqa: B902
             return False
@@ -308,6 +381,16 @@ class BookKeeperIO:
             table=f"{self.user_id}_books", database="book_keeper"
         )
 
+    def user_table_exists(self) -> bool:
+        """
+        Check if the user's table exists.
+
+        :return: whether the table exists or not
+        :rtype: bool
+        """
+        inspector = inspect(self.sql_engine)
+        return inspector.has_table(f"{self.user_id}_book_logs", schema=self.schema)
+
     def get_latest_book_version(self, books_df: pd.DataFrame) -> pd.DataFrame:
         """
         Get the latest version of the books.
@@ -319,10 +402,10 @@ class BookKeeperIO:
         :rtype: pd.DataFrame
         """
         latest_update_per_book = (
-            books_df.groupby("slug").agg({"current_date": "max"}).reset_index()
+            books_df.groupby("slug").agg({"log_created_at": "max"}).reset_index()
         )
         return pd.merge(
-            books_df, latest_update_per_book, on=["slug", "current_date"], how="inner"
+            books_df, latest_update_per_book, on=["slug", "log_created_at"], how="inner"
         )
 
     def update_tables(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -336,12 +419,7 @@ class BookKeeperIO:
 
         if not books_df.empty:
             today = pd.Timestamp.today().normalize()  # noqa: F841
-            today_batch_df = books_df.query("current_date==@today")
+            today_batch_df = books_df.query("log_created_at==@today")
             latest_state_df = self.get_latest_book_version(books_df)
 
         return books_df, today_batch_df, latest_state_df
-
-    def _run_athena_query(self, query: str) -> bool:
-        return wr.athena.start_query_execution(
-            sql=query, database="book_keeper", wait=True
-        )
