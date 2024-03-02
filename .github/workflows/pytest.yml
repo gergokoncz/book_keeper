@@ -22,8 +22,8 @@ jobs:
       - name: Set up AWS access
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3
