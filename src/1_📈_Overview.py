@@ -3,7 +3,7 @@
 """
 This is the entry point for BookKeeper app.
 
-Showing some basic statistics of the books that you have logged.
+Showing the statistics of the books that you have logged.
 """
 
 import math
@@ -16,13 +16,11 @@ import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
 
-from utils import AuthIO, BookKeeperDataOps, BookKeeperIO, load_lottie_url
+from utils import AuthIO, BookKeeperDataOps, BookKeeperIO, load_lottie_asset
 
-# GLOBALS
-lottie_asset_url = "https://assets3.lottiefiles.com/packages/lf20_4XmSkB.json"
-custom_color_scheme = ["#FF5733", "#33FF57", "#5733FF", "#FFFF33", "#33FFFF"]
-
-two_weeks_ago = datetime.today() - timedelta(days=14)
+# VARS
+OVERVIEW_LOTTIE_URL = "https://assets3.lottiefiles.com/packages/lf20_4XmSkB.json"
+TWO_WEEKS_AGO = datetime.today() - timedelta(days=14)
 
 
 def main() -> None:
@@ -32,7 +30,7 @@ def main() -> None:
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    lottie_books = load_lottie_url(lottie_asset_url)
+    lottie_books = load_lottie_asset(OVERVIEW_LOTTIE_URL)
     st_lottie(lottie_books, speed=1, height=100, key="initial")
 
     st.title("BookKeeper")
@@ -65,9 +63,7 @@ def main() -> None:
 
         with st.spinner("Your books are loading..."):
             if "bk" not in st.session_state:
-                st.session_state.bk = BookKeeperIO(
-                    st.session_state["username"], bucket=bucket
-                )
+                st.session_state.bk = BookKeeperIO(st.session_state["username"])
 
             # get an update on the tables
             if "books_df" not in st.session_state:
@@ -115,6 +111,20 @@ def main() -> None:
         )
 
         # UI
+
+        st.markdown("### Your main KPIs")
+
+        main_cols = st.columns(3)
+        with main_cols[0]:
+            st.metric(
+                "Books read",
+                latest_books_with_state_df.query("state == 'finished'").shape[0],
+            )
+        with main_cols[1]:
+            st.write()
+
+        st.divider()
+
         ## Currently read books
 
         with st.expander("Books currently in progress", expanded=True):
@@ -133,7 +143,7 @@ def main() -> None:
                         bkdata.get_closest_date_pagecount_for_book(
                             filled_up_currently_reading,
                             book["slug"],
-                            date=two_weeks_ago,
+                            date=TWO_WEEKS_AGO,
                         )
                     )
                     with cols[col]:
@@ -219,7 +229,7 @@ def main() -> None:
         # )
 
         ## Book statistics
-        with st.expander("Statistics related to books", expanded=False):
+        with st.expander("Book statistics", expanded=False):
             fig_books_by_published_date = (
                 alt.Chart(
                     latest_books_with_state_df.query("published_year > 0"),

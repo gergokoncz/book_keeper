@@ -14,10 +14,10 @@ import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
 
-from utils import AuthIO, BookKeeperIO, load_lottie_url
+from utils import AuthIO, BookKeeperIO, load_lottie_asset
 
-# GLOBALS
-lottie_asset_url = "https://assets5.lottiefiles.com/packages/lf20_noyzw8ub.json"
+# VARS
+UPDATE_LOTTIE_URL = "https://assets5.lottiefiles.com/packages/lf20_noyzw8ub.json"
 
 
 def main() -> None:
@@ -26,7 +26,7 @@ def main() -> None:
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    lottie_books = load_lottie_url(lottie_asset_url)
+    lottie_books = load_lottie_asset(UPDATE_LOTTIE_URL)
     st_lottie(lottie_books, speed=1, height=100, key="initial")
 
     st.markdown(
@@ -59,8 +59,7 @@ def main() -> None:
         authenticator.logout("Logout", "sidebar")
         with st.spinner("Your books are loading..."):
             if "bk" not in st.session_state:
-                bucket = environ.get("BOOKSTORAGE_BUCKET")
-                st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
+                st.session_state.bk = BookKeeperIO(st.session_state["username"])
 
             # get an update on the tables
             if "books_df" not in st.session_state:

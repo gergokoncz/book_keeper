@@ -12,10 +12,10 @@ import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
 
-from utils import AuthIO, BookKeeperIO, load_lottie_url
+from utils import AuthIO, load_lottie_asset
 
-# GLOBALS
-lottie_asset_url = (
+# VARS
+PROFILE_LOTTIE_URL = (
     "https://lottie.host/850fc636-eca1-4080-ba93-8bf228a95437/ZadfNJek3L.json"
 )
 
@@ -26,7 +26,7 @@ def main() -> None:
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    lottie_add = load_lottie_url(lottie_asset_url)
+    lottie_add = load_lottie_asset(PROFILE_LOTTIE_URL)
     st_lottie(lottie_add, speed=1, height=100, key="initial")
 
     st.markdown(
