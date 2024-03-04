@@ -12,11 +12,12 @@ import pandas as pd
 import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
+from datetime import datetime
 
-from utils import AuthIO, BookKeeperIO, load_lottie_url
+from utils import AuthIO, BookKeeperIO, load_lottie_asset
 
-# GLOBALS
-lottie_asset_url = "https://assets6.lottiefiles.com/packages/lf20_hMl7FE.json"
+# VARS
+ADD_LOTTIE_URL = "https://assets6.lottiefiles.com/packages/lf20_hMl7FE.json"
 
 
 def main() -> None:
@@ -25,7 +26,7 @@ def main() -> None:
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    lottie_add = load_lottie_url(lottie_asset_url)
+    lottie_add = load_lottie_asset(ADD_LOTTIE_URL)
 
     st_lottie(lottie_add, speed=1, height=100, key="initial")
 
@@ -43,7 +44,6 @@ def main() -> None:
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)
     config = authio.get_auth_config()
-    # success = authio.update_auth_config(config)
 
     authenticator = stauth.Authenticate(
         config["credentials"],
@@ -62,8 +62,7 @@ def main() -> None:
 
         with st.spinner("Your books are loading..."):
             if "bk" not in st.session_state:
-                bucket = environ.get("BOOKSTORAGE_BUCKET")
-                st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
+                st.session_state.bk = BookKeeperIO(st.session_state["username"])
 
             # get an update on the tables
             if "books_df" not in st.session_state:
@@ -88,7 +87,10 @@ def main() -> None:
 
         with col2:
             published_year = st.number_input(
-                "Published year", min_value=0, max_value=2023
+                "Published year",
+                min_value=0,
+                max_value=datetime.now().year,
+                value=datetime.now().year,
             )
             book_location = st.text_input("Location - physical or virtual")
             book_pageN = st.number_input(

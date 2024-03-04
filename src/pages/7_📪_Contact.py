@@ -5,6 +5,7 @@ This is the contacts page for BookKeeper .
 
 Showing contact information for maintainer.
 """
+
 import streamlit as st
 
 
@@ -18,12 +19,14 @@ def main() -> None:
     st.divider()
     st.markdown(
         """
-                The BookKeeper project is maintaned by a single developer, Gergo Koncz.
+                The BookKeeper project is maintaned by Gergo Koncz.
 
-                The goal was to get familiar with **streamlit** and to learn how to write a simple web app in **python**.
+                The goal was to get familiar with **streamlit** and to
+                learn how to write a simple web app in **python**.
 
                 My info is listed below.
-                If you have any questions, suggestions, or just want to say hi, please feel free to contact me on any of the channels.
+                If you have any questions or suggestions please feel free to contact
+                me on any of the channels.
                 Furthermore, please feel free to submit PRs to the github project.
                 """
     )

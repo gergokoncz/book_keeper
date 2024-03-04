@@ -10,7 +10,6 @@ import re
 from os import environ
 from typing import Any, Tuple
 
-import awswrangler as wr
 import pandas as pd
 from sqlalchemy import (
     Boolean,
@@ -39,7 +38,7 @@ engine = create_engine(f"postgresql://{user}:{password}@{host}:5432/admin_db")
 class BookKeeperIO:
     """Class to handle the IO operations of the BookKeeper app."""
 
-    def __init__(self, user_id: str, bucket: str):
+    def __init__(self, user_id: str):
         """
         Class constructor.
 
@@ -49,7 +48,6 @@ class BookKeeperIO:
         :type bucket: str
         """
         self.user_id = user_id
-        self.bucket = bucket
 
         self.sql_engine = engine
         self.schema = schema
@@ -204,7 +202,7 @@ class BookKeeperIO:
         return True, self._append_book_to_df(book=book, finished=finished, df=df)
 
     def revert_deletion_book(
-        self, slug: str, today_df: pd.DataFrame, latest_df: pd.DataFrame
+        self, slug: str, today_df: pd.DataFrame
     ) -> Tuple[bool, pd.DataFrame]:
         """
         Revert the deletion of a book.
@@ -215,8 +213,6 @@ class BookKeeperIO:
         :type slug: str
         :param today_df: the dataframe to revert the book in
         :type today_df: pd.DataFrame
-        :param latest_df: the latest dataframe of the user's books
-        :type latest_df: pd.DataFrame
 
         :return: whether the book was reverted or not, the dataframe with the book reverted
         :rtype: Tuple[bool, pd.DataFrame]
@@ -224,8 +220,8 @@ class BookKeeperIO:
         if slug in set(today_df["slug"].unique().tolist()):
             today_df.loc[today_df["slug"] == slug, "deleted"] = False
             return True, today_df
-        else:
-            return False, today_df
+
+        return False, today_df
 
     def delete_book(
         self, slug: str, today_df: pd.DataFrame, latest_df: pd.DataFrame
@@ -246,14 +242,14 @@ class BookKeeperIO:
         if slug in set(today_df["slug"].unique().tolist()):
             today_df.loc[today_df["slug"] == slug, "deleted"] = True
             return True, today_df
-        else:
-            book_to_be_deleted = latest_df.loc[latest_df["slug"] == slug].to_dict(
-                "records"
-            )[0]
-            today_df = self._append_book_to_df(
-                book=book_to_be_deleted, finished=False, df=today_df, deleted=True
-            )
-            return True, today_df
+
+        book_to_be_deleted = latest_df.loc[latest_df["slug"] == slug].to_dict(
+            "records"
+        )[0]
+        today_df = self._append_book_to_df(
+            book=book_to_be_deleted, finished=False, df=today_df, deleted=True
+        )
+        return True, today_df
 
     def get_deleted_books(self, df: pd.DataFrame) -> set:
         """
@@ -284,8 +280,8 @@ class BookKeeperIO:
             )
             self.existing_book_slugs = set(books_df["slug"].unique().tolist())
             return books_df
-        else:
-            return EXAMPLE_DATA
+
+        return EXAMPLE_DATA
 
     def remove_deleted_books(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -300,18 +296,18 @@ class BookKeeperIO:
         deleted_books = self.get_deleted_books(df)  # noqa: F841
         return df.query("slug not in @deleted_books")
 
-    def get_books(self) -> pd.DataFrame:
-        """
-        Get the user's books.
+    # def get_books(self) -> pd.DataFrame:
+    #     """
+    #     Get the user's books.
 
-        Filter out deleted books.
+    #     Filter out deleted books.
 
-        :return: the user's books
-        :rtype: pd.DataFrame
-        """
-        all_books_df = self.get_all_books()
-        deleted_books = self.get_deleted_books(all_books_df)  # noqa: F841
-        return all_books_df.query("slug not in @deleted_books")
+    #     :return: the user's books
+    #     :rtype: pd.DataFrame
+    #     """
+    #     all_books_df = self.get_all_books()
+    #     deleted_books = self.get_deleted_books(all_books_df)  # noqa: F841
+    #     return all_books_df.query("slug not in @deleted_books")
 
     def save_books(self, df: pd.DataFrame) -> bool:
         """
@@ -327,10 +323,9 @@ class BookKeeperIO:
         :return: whether the dataframe was saved or not
         :rtype: bool
         """
-        if self.user_table_exists():
-            self.delete_table_rows_for_date(pd.Timestamp.today().normalize())
-        else:
+        if not self.user_table_exists():
             self.create_user_table()
+
         delete_success = self.delete_table_rows_for_date(
             pd.Timestamp.today().normalize()
         )
@@ -344,8 +339,8 @@ class BookKeeperIO:
                 index=False,
             )
             return True
-        else:
-            return False
+
+        return False
 
     def delete_table_rows_for_date(self, date: pd.Timestamp) -> bool:
         """
@@ -370,17 +365,6 @@ class BookKeeperIO:
         except Exception:  # noqa: B902
             return False
 
-    def search_user_table(self) -> bool:
-        """
-        Search for the user's table in AWS Glue Catalog.
-
-        :return: whether the table exists or not
-        :rtype: bool
-        """
-        return wr.catalog.does_table_exist(
-            table=f"{self.user_id}_books", database="book_keeper"
-        )
-
     def user_table_exists(self) -> bool:
         """
         Check if the user's table exists.
@@ -391,7 +375,9 @@ class BookKeeperIO:
         inspector = inspect(self.sql_engine)
         return inspector.has_table(f"{self.user_id}_book_logs", schema=self.schema)
 
-    def get_latest_book_version(self, books_df: pd.DataFrame) -> pd.DataFrame:
+    def get_latest_book_version(
+        self, books_df: pd.DataFrame, date_col: str
+    ) -> pd.DataFrame:
         """
         Get the latest version of the books.
 
@@ -402,10 +388,10 @@ class BookKeeperIO:
         :rtype: pd.DataFrame
         """
         latest_update_per_book = (
-            books_df.groupby("slug").agg({"log_created_at": "max"}).reset_index()
+            books_df.groupby("slug").agg({date_col: "max"}).reset_index()
         )
         return pd.merge(
-            books_df, latest_update_per_book, on=["slug", "log_created_at"], how="inner"
+            books_df, latest_update_per_book, on=["slug", date_col], how="inner"
         )
 
     def update_tables(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -418,8 +404,10 @@ class BookKeeperIO:
         books_df = self.get_all_books()
 
         if not books_df.empty:
-            today = pd.Timestamp.today().normalize()  # noqa: F841
+            today = pd.Timestamp.today().normalize().date()  # noqa: F841
             today_batch_df = books_df.query("log_created_at==@today")
-            latest_state_df = self.get_latest_book_version(books_df)
+            latest_state_df = self.get_latest_book_version(
+                books_df, date_col="log_created_at"
+            )
 
         return books_df, today_batch_df, latest_state_df

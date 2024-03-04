@@ -3,7 +3,7 @@
 """
 The utility class of the app.
 
-With classes and functions for IO and data manipulation.
+With classes and functions for general utilities.
 """
 
 from typing import Optional
@@ -11,7 +11,7 @@ from typing import Optional
 import requests
 
 
-def load_lottie_url(url: str) -> Optional[dict]:
+def load_lottie_asset(url: str) -> Optional[dict]:
     """
     Load the lottie file located at given url.
 

@@ -9,15 +9,14 @@ Also revert the deletion on the day you have done it.
 
 from os import environ
 
-import pandas as pd
 import streamlit as st
 import streamlit_authenticator as stauth
 from streamlit_lottie import st_lottie
 
-from utils import AuthIO, BookKeeperIO, load_lottie_url
+from utils import AuthIO, BookKeeperIO, load_lottie_asset
 
 # GLOBALS
-lottie_asset_url = "https://assets7.lottiefiles.com/packages/lf20_nux6g0kx.json"
+DELETE_LOTTIE_URL = "https://assets7.lottiefiles.com/packages/lf20_nux6g0kx.json"
 
 
 def main() -> None:
@@ -26,7 +25,7 @@ def main() -> None:
         page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
     )
 
-    lottie_add = load_lottie_url(lottie_asset_url)
+    lottie_add = load_lottie_asset(DELETE_LOTTIE_URL)
     st_lottie(lottie_add, speed=1, height=100, key="initial")
 
     st.markdown(
@@ -57,10 +56,8 @@ def main() -> None:
         authenticator.logout("Logout", "sidebar")
 
         with st.spinner("Your books are loading..."):
-
             if "bk" not in st.session_state:
-                bucket = environ.get("BOOKSTORAGE_BUCKET")
-                st.session_state.bk = BookKeeperIO("gergokoncz", bucket=bucket)
+                st.session_state.bk = BookKeeperIO(st.session_state["username"])
 
             # get an update on the tables
             if "books_df" not in st.session_state:
@@ -120,7 +117,6 @@ def main() -> None:
             ) = st.session_state.bk.revert_deletion_book(
                 selected_slug_for_revert,
                 st.session_state.today_books_df,
-                st.session_state.latest_book_state_df,
             )
             if success:
                 saved = st.session_state.bk.save_books(st.session_state.today_books_df)
