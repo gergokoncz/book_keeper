@@ -17,12 +17,15 @@ from sqlalchemy import (
     Date,
     Integer,
     MetaData,
+    UniqueConstraint,
     String,
     Table,
     create_engine,
     delete,
     inspect,
 )
+from sqlalchemy.dialects.postgresql import insert
+from psycopg2 import ProgrammingError
 
 from .example_data import EXAMPLE_DATA
 
@@ -84,7 +87,7 @@ class BookKeeperIO:
             _ = Table(
                 f"{self.user_id}_book_logs",
                 self.metadata,
-                Column("id", Integer, primary_key=True),
+                Column("id", Integer, primary_key=True, autoincrement=True),
                 Column("title", String),
                 Column("subtitle", String),
                 Column("author", String),
@@ -102,13 +105,14 @@ class BookKeeperIO:
                 Column("started", Boolean),
                 Column("deleted", Boolean),
                 Column("log_created_at", Date, index=True),
+                UniqueConstraint("slug", "log_created_at", name="unique_slug_date"),
                 schema=self.schema,
             )
             self.metadata.create_all(self.sql_engine)
             self.metadata.reflect(bind=self.sql_engine, schema=self.schema)
 
             return True
-        except Exception:  # noqa: B902
+        except ProgrammingError:
             return False
 
     def _append_book_to_df(
@@ -136,7 +140,7 @@ class BookKeeperIO:
         if type(book["finish_date"]) != type(pd.to_datetime("today")):  # noqa: E721
             book["finish_date"] = pd.to_datetime(book["finish_date"])
 
-        book["log_created_at"] = pd.to_datetime("today").normalize()
+        book["log_created_at"] = pd.to_datetime("today").normalize().date()
         book["deleted"] = deleted
         book["started"] = book["page_current"] > 0
 
@@ -223,6 +227,45 @@ class BookKeeperIO:
 
         return False, today_df
 
+    def get_upsert_daily_book_log_stmt(self, book: dict[str, Any]) -> bool:
+        """
+        Upsert the daily book log.
+
+        :param book: the book to upsert
+        :type book: dict[str, Any]
+
+        :return: whether the book was upserted or not
+        :rtype: bool
+        """
+        table_name = f"{self.schema}.{self.user_id}_book_logs"
+        table = self.metadata.tables[table_name]
+
+        book = {k: v for k, v in book.items() if k != "id"}  # filter out the id
+
+        stmt = insert(table).values(**book)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["slug", "log_created_at"],
+            set_={
+                "title": stmt.excluded.title,
+                "subtitle": stmt.excluded.subtitle,
+                "author": stmt.excluded.author,
+                "location": stmt.excluded.location,
+                "publisher": stmt.excluded.publisher,
+                "published_year": stmt.excluded.published_year,
+                "page_n": stmt.excluded.page_n,
+                "page_current": stmt.excluded.page_current,
+                "finish_date": stmt.excluded.finish_date,
+                "tag1": stmt.excluded.tag1,
+                "tag2": stmt.excluded.tag2,
+                "tag3": stmt.excluded.tag3,
+                "language": stmt.excluded.language,
+                "started": stmt.excluded.page_current > 0,
+                "deleted": stmt.excluded.deleted,
+            },
+        )
+
+        return stmt
+
     def delete_book(
         self, slug: str, today_df: pd.DataFrame, latest_df: pd.DataFrame
     ) -> Tuple[bool, pd.DataFrame]:
@@ -296,19 +339,6 @@ class BookKeeperIO:
         deleted_books = self.get_deleted_books(df)  # noqa: F841
         return df.query("slug not in @deleted_books")
 
-    # def get_books(self) -> pd.DataFrame:
-    #     """
-    #     Get the user's books.
-
-    #     Filter out deleted books.
-
-    #     :return: the user's books
-    #     :rtype: pd.DataFrame
-    #     """
-    #     all_books_df = self.get_all_books()
-    #     deleted_books = self.get_deleted_books(all_books_df)  # noqa: F841
-    #     return all_books_df.query("slug not in @deleted_books")
-
     def save_books(self, df: pd.DataFrame) -> bool:
         """
         Save the dataframe to the user's table.
@@ -326,21 +356,16 @@ class BookKeeperIO:
         if not self.user_table_exists():
             self.create_user_table()
 
-        delete_success = self.delete_table_rows_for_date(
-            pd.Timestamp.today().normalize()
-        )
+        try:
+            with self.sql_engine.connect() as conn:
+                for _, row in df.iterrows():
+                    stmt = self.get_upsert_daily_book_log_stmt(dict(row))
+                    conn.execute(stmt)
 
-        if delete_success:
-            df.to_sql(
-                f"{self.user_id}_book_logs",
-                self.sql_engine,
-                schema=self.schema,
-                if_exists="append",
-                index=False,
-            )
+                conn.commit()
             return True
-
-        return False
+        except ProgrammingError:
+            return False
 
     def delete_table_rows_for_date(self, date: pd.Timestamp) -> bool:
         """
@@ -362,7 +387,7 @@ class BookKeeperIO:
                 conn.commit()
 
             return True
-        except Exception:  # noqa: B902
+        except ProgrammingError:
             return False
 
     def user_table_exists(self) -> bool:
