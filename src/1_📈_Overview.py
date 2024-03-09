@@ -45,7 +45,6 @@ def main() -> None:
     ) - pd.DateOffset(days=3)
 
     filled_up_df = bkdata.fill_up_dataframe(st.session_state.books_df)
-    st.write(filled_up_df)
 
     summed_pages = (
         filled_up_df.groupby("log_created_at")
@@ -61,6 +60,7 @@ def main() -> None:
         summed_pages["page_current"].ewm(span=15).mean()
     )
 
+    books_read = latest_books_with_state_df.query("state == 'finished'").shape[0]
     pages_read = summed_pages["page_current"].max()
     earliest_log = filled_up_df["log_created_at"].min()
     days_passed = (datetime.today().date() - earliest_log.date()).days
@@ -73,7 +73,7 @@ def main() -> None:
     with main_cols[0]:
         st.metric(
             "Books read",
-            latest_books_with_state_df.query("state == 'finished'").shape[0],
+            books_read,
         )
     with main_cols[1]:
         st.metric(
@@ -82,10 +82,7 @@ def main() -> None:
         )
 
     with main_cols[2]:
-        st.metric(
-            "Days since first log",
-            days_passed,
-        )
+        st.metric("Days per books", round(days_passed / books_read, 2))
 
     with main_cols[3]:
         st.metric(
