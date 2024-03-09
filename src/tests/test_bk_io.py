@@ -49,7 +49,7 @@ def test_create_slug_basic(bookkeeper_io):
         "author": "Test Author",
     }
 
-    slug = bookkeeper_io.create_slug(book)
+    slug = bookkeeper_io._create_slug(book)
 
     assert isinstance(slug, str)
     assert slug == "test-author-test-book"
