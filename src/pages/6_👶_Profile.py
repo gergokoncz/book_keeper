@@ -10,9 +10,8 @@ from os import environ
 
 import streamlit as st
 import streamlit_authenticator as stauth
-from streamlit_lottie import st_lottie
 
-from utils import AuthIO, load_lottie_asset
+from utils import AuthIO, base_layout
 
 # VARS
 PROFILE_LOTTIE_URL = (
@@ -20,21 +19,13 @@ PROFILE_LOTTIE_URL = (
 )
 
 
+@base_layout(
+    lottie_url=PROFILE_LOTTIE_URL,
+    title="Your profile",
+    description="Change your user details and reset your password.",
+)
 def main() -> None:
-    """Main flow of the Search page."""
-    st.set_page_config(
-        page_title="BookKeeper", page_icon=":closed_book:", layout="wide"
-    )
-
-    lottie_add = load_lottie_asset(PROFILE_LOTTIE_URL)
-    st_lottie(lottie_add, speed=1, height=100, key="initial")
-
-    st.markdown(
-        """
-        ## Your profile
-        """
-    )
-
+    """Main flow of the Profile page."""
     ## AUTH
     bucket = environ.get("BOOKSTORAGE_BUCKET")
     authio = AuthIO(bucket=bucket)

@@ -162,7 +162,9 @@ class BookKeeperDataOps:
         """
         books_df = self.add_books_state(books_df)
         finished_books_df = books_df.query("state=='finished'").copy()
-        finished_books_df = finished_books_df.query("log_created_at > finish_date")
+        finished_books_df = finished_books_df.query(
+            "log_created_at > finish_date"
+        ).copy()
         finished_books_df["log_created_at"] = finished_books_df["finish_date"]
         return finished_books_df
 
@@ -213,12 +215,12 @@ class BookKeeperDataOps:
         )
 
         # fill remaining missing values with 0
-        result_df["page_current"].fillna(0, inplace=True)
+        result_df.fillna({"page_current": 0}, inplace=True)
 
         return result_df
 
     def _custom_interpolate(self, group: pd.DataFrame) -> pd.DataFrame:
-        group["page_current"] = group["page_current"].interpolate(method="ffill")
+        group["page_current"] = group["page_current"].ffill()
         return group
 
     def get_earliest_log_per_book(books_df: pd.DataFrame) -> pd.DataFrame:
@@ -258,15 +260,15 @@ class BookKeeperDataOps:
         :return: the dataframe updated with the state of the books
         :rtype: pd.DataFrame
         """
-        latest_books_df.loc[:, "state"] = BookState.NOT_STARTED.value
-        latest_books_df.loc[latest_books_df["page_current"] > 0, "state"] = (
-            BookState.IN_PROGRESS.value
-        )
-        latest_books_df.loc[~pd.isnull(latest_books_df["finish_date"]), "state"] = (
+        df_copy = latest_books_df.copy()
+
+        df_copy.loc[:, "state"] = BookState.NOT_STARTED.value
+        df_copy.loc[df_copy["page_current"] > 0, "state"] = BookState.IN_PROGRESS.value
+        df_copy.loc[~pd.isnull(df_copy["finish_date"]), "state"] = (
             BookState.FINISHED.value
         )
 
-        return latest_books_df
+        return df_copy
 
     def show_books_overview(self, df: pd.DataFrame) -> pd.DataFrame:
         """
