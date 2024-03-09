@@ -45,13 +45,13 @@ def main() -> None:
     ) - pd.DateOffset(days=3)
 
     filled_up_df = bkdata.fill_up_dataframe(st.session_state.books_df)
+    st.write(filled_up_df)
 
     summed_pages = (
         filled_up_df.groupby("log_created_at")
         .agg({"page_current": "sum"})
         .reset_index()
     )
-    st.write(summed_pages)
 
     filled_up_currently_reading = filled_up_df.query(
         "slug in @in_progress_book_titles and log_created_at >= @earliest_log_date_current"
@@ -61,18 +61,37 @@ def main() -> None:
         summed_pages["page_current"].ewm(span=15).mean()
     )
 
+    pages_read = summed_pages["page_current"].max()
+    earliest_log = filled_up_df["log_created_at"].min()
+    days_passed = (datetime.today().date() - earliest_log.date()).days
+
     # UI
 
     st.markdown("### Your main KPIs")
 
-    main_cols = st.columns(3)
+    main_cols = st.columns(4)
     with main_cols[0]:
         st.metric(
             "Books read",
             latest_books_with_state_df.query("state == 'finished'").shape[0],
         )
     with main_cols[1]:
-        st.write()
+        st.metric(
+            "Pages read",
+            int(summed_pages["page_current"].max()),
+        )
+
+    with main_cols[2]:
+        st.metric(
+            "Days since first log",
+            days_passed,
+        )
+
+    with main_cols[3]:
+        st.metric(
+            "Pages per day",
+            round(pages_read / days_passed, 2),
+        )
 
     st.divider()
 
