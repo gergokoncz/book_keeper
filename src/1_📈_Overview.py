@@ -13,18 +13,20 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from utils import BookKeeperDataOps, authenticated_with_data
+from utils import BookKeeperDataOps, base_layout, with_authentication, with_user_logs
 
 # VARS
 OVERVIEW_LOTTIE_URL = "https://assets3.lottiefiles.com/packages/lf20_4XmSkB.json"
 TWO_WEEKS_AGO = datetime.today() - timedelta(days=14)
 
 
-@authenticated_with_data(
+@base_layout(
     lottie_url=OVERVIEW_LOTTIE_URL,
     title="BookKeeper",
     description="Keep track of the books you read or you plan to read.",
 )
+@with_authentication
+@with_user_logs
 def main() -> None:
     """Main flow of the Overview page."""
     bkdata = BookKeeperDataOps()
@@ -33,7 +35,9 @@ def main() -> None:
     )
 
     ## BOOKS currently in progress
-    in_progress_books = latest_books_with_state_df.query("state == 'in progress'")
+    in_progress_books = latest_books_with_state_df.query(
+        "state == 'in progress'"
+    ).copy()
     in_progress_books["progress_perc"] = in_progress_books.apply(
         lambda x: round(x["page_current"] / x["page_n"] * 100, 2), axis=1
     )
@@ -50,11 +54,11 @@ def main() -> None:
         filled_up_df.groupby("log_created_at")
         .agg({"page_current": "sum"})
         .reset_index()
-    )
+    ).copy()
 
     filled_up_currently_reading = filled_up_df.query(
         "slug in @in_progress_book_titles and log_created_at >= @earliest_log_date_current"
-    )
+    ).copy()
 
     summed_pages["smoothed_page_current"] = (
         summed_pages["page_current"].ewm(span=15).mean()

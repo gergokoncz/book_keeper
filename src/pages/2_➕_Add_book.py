@@ -11,17 +11,19 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-from utils import authenticated_with_data
+from utils import base_layout, with_authentication, with_user_logs
 
 # VARS
 ADD_LOTTIE_URL = "https://assets6.lottiefiles.com/packages/lf20_hMl7FE.json"
 
 
-@authenticated_with_data(
+@base_layout(
     lottie_url=ADD_LOTTIE_URL,
     title="Add a new book",
     description="Specify the book details below. Most details can be left empty and edited later on the update page. The exceptions are the title and the author.",
 )
+@with_authentication
+@with_user_logs
 def main() -> None:
     """Main flow of the Add page."""
     finished = st.checkbox("Finished")

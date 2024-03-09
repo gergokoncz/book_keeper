@@ -9,17 +9,19 @@ Also revert the deletion on the day you have done it.
 
 import streamlit as st
 
-from utils import authenticated_with_data
+from utils import base_layout, with_authentication, with_user_logs
 
 # GLOBALS
 DELETE_LOTTIE_URL = "https://assets7.lottiefiles.com/packages/lf20_nux6g0kx.json"
 
 
-@authenticated_with_data(
+@base_layout(
     lottie_url=DELETE_LOTTIE_URL,
     title="Delete a book",
     description="Select the book by slug and confirm delete.",
 )
+@with_authentication
+@with_user_logs
 def main() -> None:
     """Main flow of the Delete page."""
     selected_slug_for_deletion = st.selectbox(

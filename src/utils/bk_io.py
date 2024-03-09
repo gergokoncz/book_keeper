@@ -18,9 +18,9 @@ from sqlalchemy import (
     Date,
     Integer,
     MetaData,
-    UniqueConstraint,
     String,
     Table,
+    UniqueConstraint,
     create_engine,
     inspect,
 )

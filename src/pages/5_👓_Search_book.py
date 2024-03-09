@@ -8,7 +8,7 @@ Search your books by name and see event log for them.
 
 import streamlit as st
 
-from utils import BookKeeperDataOps, authenticated_with_data
+from utils import BookKeeperDataOps, base_layout, with_authentication, with_user_logs
 
 # GLOBALS
 SEARCH_LOTTIE_URL = (
@@ -16,11 +16,13 @@ SEARCH_LOTTIE_URL = (
 )
 
 
-@authenticated_with_data(
+@base_layout(
     lottie_url=SEARCH_LOTTIE_URL,
     title="Search for books",
     description="Filter books by properties, or search for a book by title and get the detailed logs and see its history.",
 )
+@with_authentication
+@with_user_logs
 def main() -> None:
     """Main flow of the Search page."""
     bk_data_ops = BookKeeperDataOps()
