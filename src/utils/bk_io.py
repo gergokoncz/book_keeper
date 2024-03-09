@@ -11,6 +11,7 @@ from os import environ
 from typing import Any, Tuple
 
 import pandas as pd
+from psycopg2 import ProgrammingError
 from sqlalchemy import (
     Boolean,
     Column,
@@ -21,11 +22,10 @@ from sqlalchemy import (
     String,
     Table,
     create_engine,
-    delete,
     inspect,
 )
 from sqlalchemy.dialects.postgresql import insert
-from psycopg2 import ProgrammingError
+from sqlalchemy.sql.dml import Insert
 
 from .example_data import EXAMPLE_DATA
 
@@ -59,99 +59,52 @@ class BookKeeperIO:
 
         self.existing_book_slugs: set[str] = set()
 
-    @staticmethod
-    def create_slug(book: dict[str, Any]) -> str:
+    # public methods
+    def get_updated_tables(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
-        Create a slug for the book.
+        Update the user's book list, today's batch and the latest state of the books.
 
-        :param book: the book to create the slug for
-        :type book: dict[str, Any]
-
-        :return: the slug of the book
-        :rtype: str
+        :return: the user's book list, today's batch and the latest state of the books
+        :rtype: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
         """
-        author = (
-            re.sub(r"[^a-zA-Z0-9\s-]", "", book["author"]).replace(" ", "-").lower()
-        )
-        title = re.sub(r"[^a-zA-Z0-9\s-]", "", book["title"]).replace(" ", "-").lower()
-        return f"{author}-{title}"
+        books_df = self._get_all_books()
 
-    def create_user_table(self) -> bool:
+        if not books_df.empty:
+            today = pd.Timestamp.today().normalize().date()  # noqa: F841
+            today_batch_df = books_df.query("log_created_at==@today")
+            latest_state_df = self._get_latest_book_version(
+                books_df, date_col="log_created_at"
+            )
+
+        return books_df, today_batch_df, latest_state_df
+
+    def save_books(self, df: pd.DataFrame) -> bool:
         """
-        Create the user's table in the database.
+        Save the dataframe to the user's table.
 
-        :return: whether the table was created or not
+        Works with daily logs.
+        Drops all previous logs from that date.
+        Writes the table.
+
+        :param df: the dataframe to save
+        :type df: pd.DataFrame
+
+        :return: whether the dataframe was saved or not
         :rtype: bool
         """
-        try:
-            _ = Table(
-                f"{self.user_id}_book_logs",
-                self.metadata,
-                Column("id", Integer, primary_key=True, autoincrement=True),
-                Column("title", String),
-                Column("subtitle", String),
-                Column("author", String),
-                Column("location", String),
-                Column("publisher", String),
-                Column("published_year", Integer),
-                Column("page_n", Integer),
-                Column("page_current", Integer),
-                Column("finish_date", Date),
-                Column("tag1", String),
-                Column("tag2", String),
-                Column("tag3", String),
-                Column("language", String),
-                Column("slug", String, index=True),
-                Column("started", Boolean),
-                Column("deleted", Boolean),
-                Column("log_created_at", Date, index=True),
-                UniqueConstraint("slug", "log_created_at", name="unique_slug_date"),
-                schema=self.schema,
-            )
-            self.metadata.create_all(self.sql_engine)
-            self.metadata.reflect(bind=self.sql_engine, schema=self.schema)
+        if not self._user_table_exists():
+            self._create_user_table()
 
+        try:
+            with self.sql_engine.connect() as conn:
+                for _, row in df.iterrows():
+                    stmt = self._get_upsert_daily_book_log_stmt(dict(row))
+                    conn.execute(stmt)
+
+                conn.commit()
             return True
         except ProgrammingError:
             return False
-
-    def _append_book_to_df(
-        self,
-        book: dict[str, Any],
-        finished: bool,
-        df: pd.DataFrame,
-        deleted: bool = False,
-    ) -> pd.DataFrame:
-        """
-        Append a new book to the dataframe.
-
-        :param book: the book to append
-        :type book: dict[str, Any]
-        :param finished: whether the book is finished or not
-        :type finished: bool
-        :param df: the dataframe to append the book to
-        :type df: pd.DataFrame
-        :param deleted: whether the book is deleted or not, defaults to False
-        :type deleted: bool, optional
-
-        :return: the dataframe with the book appended
-        :rtype: pd.DataFrame
-        """
-        if type(book["finish_date"]) != type(pd.to_datetime("today")):  # noqa: E721
-            book["finish_date"] = pd.to_datetime(book["finish_date"])
-
-        book["log_created_at"] = pd.to_datetime("today").normalize().date()
-        book["deleted"] = deleted
-        book["started"] = book["page_current"] > 0
-
-        if not finished:
-            book["finish_date"] = None
-
-        if df.empty:
-            new_df = pd.DataFrame([book])
-        else:
-            new_df = pd.concat([df, pd.DataFrame([book])], ignore_index=True)
-        return new_df
 
     def add_book(
         self, book: dict[str, Any], finished: bool, df: pd.DataFrame
@@ -169,7 +122,7 @@ class BookKeeperIO:
         :return: whether the book was added or not, the dataframe with the book added
         :rtype: Tuple[bool, pd.DataFrame]
         """
-        book["slug"] = self.create_slug(book)
+        book["slug"] = self._create_slug(book)
 
         todays_books_slugs = (
             set(df["slug"].unique().tolist()) if not df.empty else set()
@@ -294,38 +247,6 @@ class BookKeeperIO:
         )
         return True, today_df
 
-    def get_deleted_books(self, df: pd.DataFrame) -> set:
-        """
-        Get the deleted books.
-
-        :param df: the dataframe to get the deleted books from
-        :type df: pd.DataFrame
-
-        :return: the deleted books
-        :rtype: set
-        """
-        return set(df.query("deleted==True")["slug"].unique().tolist())
-
-    def get_all_books(self) -> pd.DataFrame:
-        """
-        Get all the user's books.
-
-        Including deleted books.
-        Everything that is stored in DB.
-
-        :return: the user's books
-        :rtype: pd.DataFrame
-        """
-        if self.user_table_exists():
-            books_df = pd.read_sql(
-                f"SELECT * FROM {self.schema}.{self.user_id}_book_logs",
-                self.sql_engine,
-            )
-            self.existing_book_slugs = set(books_df["slug"].unique().tolist())
-            return books_df
-
-        return EXAMPLE_DATA
-
     def remove_deleted_books(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Remove deleted books from the given dataframe.
@@ -336,61 +257,31 @@ class BookKeeperIO:
         :return: the dataframe without the deleted books
         :rtype: pd.DataFrame
         """
-        deleted_books = self.get_deleted_books(df)  # noqa: F841
+        deleted_books = self._get_deleted_books(df)  # noqa: F841
         return df.query("slug not in @deleted_books")
 
-    def save_books(self, df: pd.DataFrame) -> bool:
+    # private methods
+    def _get_all_books(self) -> pd.DataFrame:
         """
-        Save the dataframe to the user's table.
+        Get all the user's books.
 
-        Works with daily logs.
-        Drops all previous logs from that date.
-        Writes the table.
+        Including deleted books.
+        Everything that is stored in DB.
 
-        :param df: the dataframe to save
-        :type df: pd.DataFrame
-
-        :return: whether the dataframe was saved or not
-        :rtype: bool
+        :return: the user's books
+        :rtype: pd.DataFrame
         """
-        if not self.user_table_exists():
-            self.create_user_table()
+        if self._user_table_exists():
+            books_df = pd.read_sql(
+                f"SELECT * FROM {self.schema}.{self.user_id}_book_logs",
+                self.sql_engine,
+            )
+            self.existing_book_slugs = set(books_df["slug"].unique().tolist())
+            return books_df
 
-        try:
-            with self.sql_engine.connect() as conn:
-                for _, row in df.iterrows():
-                    stmt = self.get_upsert_daily_book_log_stmt(dict(row))
-                    conn.execute(stmt)
+        return EXAMPLE_DATA
 
-                conn.commit()
-            return True
-        except ProgrammingError:
-            return False
-
-    def delete_table_rows_for_date(self, date: pd.Timestamp) -> bool:
-        """
-        Delete all rows for a given date.
-
-        :param date: the date to delete the rows for
-        :type date: pd.Timestamp
-
-        :return: whether the rows were deleted or not
-        :rtype: bool
-        """
-        table_name = f"{self.schema}.{self.user_id}_book_logs"
-
-        try:
-            table = self.metadata.tables[table_name]
-            stmt = delete(table).where(table.c.log_created_at == date)
-            with self.sql_engine.connect() as conn:
-                conn.execute(stmt)
-                conn.commit()
-
-            return True
-        except ProgrammingError:
-            return False
-
-    def user_table_exists(self) -> bool:
+    def _user_table_exists(self) -> bool:
         """
         Check if the user's table exists.
 
@@ -400,7 +291,7 @@ class BookKeeperIO:
         inspector = inspect(self.sql_engine)
         return inspector.has_table(f"{self.user_id}_book_logs", schema=self.schema)
 
-    def get_latest_book_version(
+    def _get_latest_book_version(
         self, books_df: pd.DataFrame, date_col: str
     ) -> pd.DataFrame:
         """
@@ -419,20 +310,147 @@ class BookKeeperIO:
             books_df, latest_update_per_book, on=["slug", date_col], how="inner"
         )
 
-    def update_tables(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def _create_user_table(self) -> bool:
         """
-        Update the user's book list, today's batch and the latest state of the books.
+        Create the user's table in the database.
 
-        :return: the user's book list, today's batch and the latest state of the books
-        :rtype: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
+        :return: whether the table was created or not
+        :rtype: bool
         """
-        books_df = self.get_all_books()
-
-        if not books_df.empty:
-            today = pd.Timestamp.today().normalize().date()  # noqa: F841
-            today_batch_df = books_df.query("log_created_at==@today")
-            latest_state_df = self.get_latest_book_version(
-                books_df, date_col="log_created_at"
+        try:
+            _ = Table(
+                f"{self.user_id}_book_logs",
+                self.metadata,
+                Column("id", Integer, primary_key=True, autoincrement=True),
+                Column("title", String),
+                Column("subtitle", String),
+                Column("author", String),
+                Column("location", String),
+                Column("publisher", String),
+                Column("published_year", Integer),
+                Column("page_n", Integer),
+                Column("page_current", Integer),
+                Column("finish_date", Date),
+                Column("tag1", String),
+                Column("tag2", String),
+                Column("tag3", String),
+                Column("language", String),
+                Column("slug", String, index=True),
+                Column("started", Boolean),
+                Column("deleted", Boolean),
+                Column("log_created_at", Date, index=True),
+                UniqueConstraint("slug", "log_created_at", name="unique_slug_date"),
+                schema=self.schema,
             )
+            self.metadata.create_all(self.sql_engine)
+            self.metadata.reflect(bind=self.sql_engine, schema=self.schema)
 
-        return books_df, today_batch_df, latest_state_df
+            return True
+        except ProgrammingError:
+            return False
+
+    def _append_book_to_df(
+        self,
+        book: dict[str, Any],
+        finished: bool,
+        df: pd.DataFrame,
+        deleted: bool = False,
+    ) -> pd.DataFrame:
+        """
+        Append a new book to the dataframe.
+
+        :param book: the book to append
+        :type book: dict[str, Any]
+        :param finished: whether the book is finished or not
+        :type finished: bool
+        :param df: the dataframe to append the book to
+        :type df: pd.DataFrame
+        :param deleted: whether the book is deleted or not, defaults to False
+        :type deleted: bool, optional
+
+        :return: the dataframe with the book appended
+        :rtype: pd.DataFrame
+        """
+        if type(book["finish_date"]) != type(pd.to_datetime("today")):  # noqa: E721
+            book["finish_date"] = pd.to_datetime(book["finish_date"])
+
+        book["log_created_at"] = pd.to_datetime("today").normalize().date()
+        book["deleted"] = deleted
+        book["started"] = book["page_current"] > 0
+
+        if not finished:
+            book["finish_date"] = None
+
+        if df.empty:
+            new_df = pd.DataFrame([book])
+        else:
+            new_df = pd.concat([df, pd.DataFrame([book])], ignore_index=True)
+        return new_df
+
+    def _get_upsert_daily_book_log_stmt(self, book: dict[str, Any]) -> Insert:
+        """
+        Upsert the daily book log.
+
+        :param book: the book to upsert
+        :type book: dict[str, Any]
+
+        :return: the SQL statement to upsert the book
+        :rtype: sqlalchemy.sql.dml.Insert
+        """
+        table_name = f"{self.schema}.{self.user_id}_book_logs"
+        table = self.metadata.tables[table_name]
+
+        book = {k: v for k, v in book.items() if k != "id"}  # filter out the id
+
+        stmt = insert(table).values(**book)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["slug", "log_created_at"],
+            set_={
+                "title": stmt.excluded.title,
+                "subtitle": stmt.excluded.subtitle,
+                "author": stmt.excluded.author,
+                "location": stmt.excluded.location,
+                "publisher": stmt.excluded.publisher,
+                "published_year": stmt.excluded.published_year,
+                "page_n": stmt.excluded.page_n,
+                "page_current": stmt.excluded.page_current,
+                "finish_date": stmt.excluded.finish_date,
+                "tag1": stmt.excluded.tag1,
+                "tag2": stmt.excluded.tag2,
+                "tag3": stmt.excluded.tag3,
+                "language": stmt.excluded.language,
+                "started": stmt.excluded.page_current > 0,
+                "deleted": stmt.excluded.deleted,
+            },
+        )
+
+        return stmt
+
+    def _get_deleted_books(self, df: pd.DataFrame) -> set:
+        """
+        Get the deleted books.
+
+        :param df: the dataframe to get the deleted books from
+        :type df: pd.DataFrame
+
+        :return: the deleted books
+        :rtype: set
+        """
+        return set(df.query("deleted==True")["slug"].unique().tolist())
+
+    @staticmethod
+    def _create_slug(book: dict[str, Any]) -> str:
+        """
+        Create a slug for the book.
+
+        :param book: the book to create the slug for
+        :type book: dict[str, Any]
+
+        :return: the slug of the book
+        :rtype: str
+        """
+        author = (
+            re.sub(r"[^a-zA-Z0-9\s-]", "", book["author"]).replace(" ", "-").lower()
+        )
+        title = re.sub(r"[^a-zA-Z0-9\s-]", "", book["title"]).replace(" ", "-").lower()
+        return f"{author}-{title}"
