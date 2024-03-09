@@ -18,9 +18,9 @@ from sqlalchemy import (
     Date,
     Integer,
     MetaData,
+    UniqueConstraint,
     String,
     Table,
-    UniqueConstraint,
     create_engine,
     inspect,
 )
@@ -179,6 +179,45 @@ class BookKeeperIO:
             return True, today_df
 
         return False, today_df
+
+    def get_upsert_daily_book_log_stmt(self, book: dict[str, Any]) -> bool:
+        """
+        Upsert the daily book log.
+
+        :param book: the book to upsert
+        :type book: dict[str, Any]
+
+        :return: whether the book was upserted or not
+        :rtype: bool
+        """
+        table_name = f"{self.schema}.{self.user_id}_book_logs"
+        table = self.metadata.tables[table_name]
+
+        book = {k: v for k, v in book.items() if k != "id"}  # filter out the id
+
+        stmt = insert(table).values(**book)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["slug", "log_created_at"],
+            set_={
+                "title": stmt.excluded.title,
+                "subtitle": stmt.excluded.subtitle,
+                "author": stmt.excluded.author,
+                "location": stmt.excluded.location,
+                "publisher": stmt.excluded.publisher,
+                "published_year": stmt.excluded.published_year,
+                "page_n": stmt.excluded.page_n,
+                "page_current": stmt.excluded.page_current,
+                "finish_date": stmt.excluded.finish_date,
+                "tag1": stmt.excluded.tag1,
+                "tag2": stmt.excluded.tag2,
+                "tag3": stmt.excluded.tag3,
+                "language": stmt.excluded.language,
+                "started": stmt.excluded.page_current > 0,
+                "deleted": stmt.excluded.deleted,
+            },
+        )
+
+        return stmt
 
     def delete_book(
         self, slug: str, today_df: pd.DataFrame, latest_df: pd.DataFrame
