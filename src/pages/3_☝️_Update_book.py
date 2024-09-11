@@ -10,7 +10,7 @@ You mistyped some attributes or just have progressed in the book, update it here
 import pandas as pd
 import streamlit as st
 
-from utils import base_layout, with_authentication
+from utils import base_layout, with_authentication, with_user_logs
 
 # VARS
 UPDATE_LOTTIE_URL = "https://assets5.lottiefiles.com/packages/lf20_noyzw8ub.json"
@@ -22,6 +22,7 @@ UPDATE_LOTTIE_URL = "https://assets5.lottiefiles.com/packages/lf20_noyzw8ub.json
     description="Select book and update details the book.",
 )
 @with_authentication
+@with_user_logs
 def main() -> None:
     """Main flow of the Update page."""
     selected_slug = st.selectbox(

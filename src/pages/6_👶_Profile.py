@@ -38,7 +38,6 @@ def main() -> None:
         config["cookie"]["expiry_days"],
         config["preauthorized"],
     )
-
     authenticator.login("Login", "main")
 
     # Present content based on authentication status
