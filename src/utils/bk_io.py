@@ -401,6 +401,9 @@ class BookKeeperIO:
         table = self.metadata.tables[table_name]
 
         book = {k: v for k, v in book.items() if k != "id"}  # filter out the id
+        book["finish_date"] = (
+            None if pd.isna(book["finish_date"]) else book["finish_date"]
+        )  # remove NaT when other in df have finish_date
 
         stmt = insert(table).values(**book)
         stmt = stmt.on_conflict_do_update(
