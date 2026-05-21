@@ -70,7 +70,7 @@ def main() -> None:
             "Published year",
             value=selected_book.get("published_year"),
             min_value=0,
-            max_value=2025,
+            max_value=2100,
         )
         book_pageN = st.number_input(
             "Number of pages",
