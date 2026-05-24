@@ -1,0 +1,23 @@
+[project]
+name = "book-keeper"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "awswrangler>=3.16.1",
+    "polars>=1.41.0",
+    "psycopg2-binary>=2.9.12",
+    "requests>=2.34.2",
+    "seaborn>=0.13.2",
+    "sqlalchemy>=2.0.49",
+    "streamlit>=1.57.0",
+    "streamlit-authenticator>=0.4.2",
+    "streamlit-lottie>=0.0.5",
+]
+
+[dependency-groups]
+dev = [
+    "ipython>=9.13.0",
+    "pre-commit>=4.6.0",
+]

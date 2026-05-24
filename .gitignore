@@ -173,6 +173,3 @@ cython_debug/
 
 # Ignore Terraform plugin files
 .terraform/
-
-poetry.lock
-pyproject.toml
