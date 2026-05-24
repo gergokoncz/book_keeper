@@ -29,6 +29,7 @@ TWO_WEEKS_AGO = datetime.today() - timedelta(days=14)
 @with_user_logs
 def main() -> None:
     """Main flow of the Overview page."""
+
     bkdata = BookKeeperDataOps()
     latest_books_with_state_df = bkdata.add_books_state(
         st.session_state.bk.remove_deleted_books(st.session_state.latest_book_state_df)
@@ -42,9 +43,9 @@ def main() -> None:
         lambda x: round(x["page_current"] / x["page_n"] * 100, 2), axis=1
     )
 
-    in_progress_book_titles = in_progress_books["slug"].tolist()  # noqa: F841
+    in_progress_book_titles = in_progress_books["slug"].tolist()
 
-    earliest_log_date_current = bkdata.get_earliest_log_for_books(  # noqa: F841
+    earliest_log_date_current = bkdata.get_earliest_log_for_books(
         slugs=in_progress_book_titles, books_df=st.session_state.books_df
     ) - pd.DateOffset(days=3)
 
@@ -154,7 +155,7 @@ def main() -> None:
             )
         )
 
-        st.altair_chart(fig_currently_reading, use_container_width=True)
+        st.altair_chart(fig_currently_reading, width="stretch")
 
     ## Reading stats
     with st.expander("Reading Statistics", expanded=False):
@@ -182,11 +183,11 @@ def main() -> None:
 
         chart_col1, chart_col2 = st.columns(2)
         with chart_col1:
-            st.altair_chart(fig_read_pages_all, use_container_width=True)
+            st.altair_chart(fig_read_pages_all, width="stretch")
 
         with chart_col2:
             # st.altair_chart(fig_read_pages_last_3_months, use_container_width=True)
-            st.altair_chart(fig_books_ratio, use_container_width=True)
+            st.altair_chart(fig_books_ratio, width="stretch")
 
     # three_month_ago = pd.to_datetime("today") - pd.DateOffset(months=3) # noqa: F841
     # last_three_month_df = summed_pages.query("current_date > @three_month_ago")
@@ -234,13 +235,11 @@ def main() -> None:
         )
         chart_col1, chart_col2 = st.columns(2)
         with chart_col1:
-            st.altair_chart(fig_books_by_published_date, use_container_width=True)
+            st.altair_chart(fig_books_by_published_date, width="stretch")
 
         with chart_col2:
-            # st.altair_chart(fig_read_pages_last_3_months, use_container_width=True)
-            st.altair_chart(
-                fig_books_by_published_date_recent, use_container_width=True
-            )
+            # st.altair_chart(fig_read_pages_last_3_months, width="stretch")
+            st.altair_chart(fig_books_by_published_date_recent, width="stretch")
 
 
 if __name__ == "__main__":

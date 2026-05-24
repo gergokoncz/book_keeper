@@ -59,7 +59,6 @@ class BookKeeperIO:
 
         self.existing_book_slugs: set[str] = set()
 
-    # public methods
     def get_updated_tables(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         Update the user's book list, today's batch and the latest state of the books.

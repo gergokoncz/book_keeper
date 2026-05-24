@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Data operations focused module of the app.
 
@@ -112,9 +110,19 @@ class BookKeeperDataOps:
         :return: the logs for the given book
         :rtype: pd.DataFrame
         """
+
         logs_for_book = self.get_logs_for_book(books_df, slug)
-        sorted_logs = logs_for_book.sort_values(by="log_created_at", ascending=True)
-        return sorted_logs.iloc[sorted_logs["log_created_at"].searchsorted(date)]
+        if logs_for_book.empty:
+            return pd.Series(dtype="object")
+
+        historical_logs = logs_for_book[
+            pd.to_datetime(logs_for_book["log_created_at"]) <= pd.to_datetime(date)
+        ]
+
+        if historical_logs.empty:
+            return logs_for_book.sort_values("log_created_at").iloc[0]
+
+        return historical_logs.sort_values("log_created_at").iloc[-1]
 
     def fill_up_book_df(
         self, book_df: pd.DataFrame, df_dates: Iterable[pd.Timestamp]
@@ -185,8 +193,9 @@ class BookKeeperDataOps:
         backdated_books_df = self.backdate_books(books_df.copy())
         books_df = pd.concat([books_df, backdated_books_df], axis=0)
         books_df["log_created_at"] = pd.to_datetime(books_df["log_created_at"])
+
         # sort df by slug and date
-        books_df.sort_values(by=["slug", "log_created_at"], inplace=True)
+        books_df = books_df.sort_values(by=["slug", "log_created_at"])
 
         # create new df with all unique dates
         unique_dates = pd.date_range(
@@ -206,16 +215,15 @@ class BookKeeperDataOps:
         )
 
         # sort and reset the index of the result df
-        result_df.sort_values(by=["slug", "log_created_at"], inplace=True)
-        result_df.reset_index(drop=True, inplace=True)
-
-        # interpolate the missing values
-        result_df = result_df.groupby("slug", group_keys=False).apply(
-            self._custom_interpolate
+        result_df = result_df.sort_values(by=["slug", "log_created_at"]).reset_index(
+            drop=True
         )
 
+        # interpolate the missing values
+        result_df["page_current"] = result_df.groupby("slug")["page_current"].ffill()
+
         # fill remaining missing values with 0
-        result_df.fillna({"page_current": 0}, inplace=True)
+        result_df["page_current"] = result_df["page_current"].fillna(0)
 
         return result_df
 

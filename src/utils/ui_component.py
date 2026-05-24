@@ -61,10 +61,9 @@ def with_authentication(func):
             config["cookie"]["name"],
             config["cookie"]["key"],
             config["cookie"]["expiry_days"],
-            config["preauthorized"],
         )
 
-        authenticator.login("Login", "main")
+        authenticator.login("main")
         # Present content based on authentication status
         ## If user is authenticated, show the app
         if st.session_state["authentication_status"]:

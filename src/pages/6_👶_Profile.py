@@ -36,9 +36,8 @@ def main() -> None:
         config["cookie"]["name"],
         config["cookie"]["key"],
         config["cookie"]["expiry_days"],
-        config["preauthorized"],
     )
-    authenticator.login("Login", "main")
+    authenticator.login("main")
 
     # Present content based on authentication status
     ## If user is authenticated, show the app
@@ -75,9 +74,7 @@ def main() -> None:
         # enable registration
         if st.checkbox("New user?"):
             try:
-                if authenticator.register_user(
-                    "Register user", "main", preauthorization=False
-                ):
+                if authenticator.register_user("main", preauthorization=False):
                     authio.update_auth_config(config)
                     st.success("You have successfully registered!")
             except Exception as e:  # noqa: B902
